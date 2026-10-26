@@ -57,7 +57,7 @@ Each change (dossier opened, charged, forgiven, settled, lapsed, struck) is writ
 Settings → Skin. Each skin changes the look *and* the wording of the confirm ritual:
 - **Nuclear Football** (default): olive console, amber readouts, hazard stripes, "Hold to arm and launch".
 - **Windows 98**: teal desktop, grey bevelled windows, "Grudge Ledger.exe", "Hold to Commit".
-- **Little Black Book**: black leather, gold foil, ruled ivory pages, handwritten entries, "Hold to inscribe".
+- **Little Black Book**: black leather, gold foil, ruled ivory pages (every line of text sits on a ruled line), handwritten entries, "Hold to inscribe".
 - **Case File**: manila folders with tabs, typewriter type, CONFIDENTIAL stamp, "Hold to file charges".
 
 ## Sound and vibration

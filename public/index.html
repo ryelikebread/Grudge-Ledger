@@ -360,6 +360,98 @@ details.add>summary::-webkit-details-marker{display:none}
 
 .toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--panel-ink);color:var(--surface);padding:10px 16px;border-radius:var(--radius);font-size:14px;max-width:calc(100% - 32px);box-shadow:0 6px 18px rgba(0,0,0,.4)}
 :root[data-skin="football"] .toast{background:#111;color:var(--accent);border:1px solid var(--accent)}
+
+/* ---------- Little Black Book: all text sits on the 28px ruled lines ----------
+   The paper lines repeat every 28px (the last-but-few pixels of each row). Text in the panels uses a 28px
+   line-height, and every block's height is a multiple of 28px, so each baseline lands just above a line.
+   Controls (buttons, chips, inputs) are 56px or 42px + 14px margin, so they take up whole rows too. */
+:root[data-skin="blackbook"] .panel{
+  --u:28px; line-height:28px; font-size:17px;
+  background:
+    linear-gradient(90deg,transparent 30px,rgba(125,20,32,.45) 30px 31px,transparent 31px),
+    repeating-linear-gradient(180deg,transparent 0 22px,rgba(110,90,60,.34) 22px 23px,transparent 23px 28px),var(--surface)}
+:root[data-skin="blackbook"] .panel>.ph{height:56px;padding:0 14px 2px 42px;align-items:flex-end;font-size:20px;line-height:28px}
+:root[data-skin="blackbook"] .panel>.pb{padding:0 14px 28px 42px;gap:0}
+:root[data-skin="blackbook"] .panel .view{gap:0}
+:root[data-skin="blackbook"] #personForm{margin-top:0!important}
+:root[data-skin="blackbook"] .panel p,:root[data-skin="blackbook"] .panel label,:root[data-skin="blackbook"] .panel h3{margin:0}
+:root[data-skin="blackbook"] .field{gap:0}
+:root[data-skin="blackbook"] .field>label,:root[data-skin="blackbook"] .lbl-sm{line-height:28px;font-size:12px}
+:root[data-skin="blackbook"] .panel .lbl-sm{display:block}
+:root[data-skin="blackbook"] .field input,:root[data-skin="blackbook"] .field select{height:56px;min-height:56px;padding:28px 2px 0;line-height:28px;border:0;background:transparent}
+:root[data-skin="blackbook"] .field textarea{height:112px;min-height:112px;padding:0 2px;line-height:28px;border:0;resize:none;background:transparent}
+:root[data-skin="blackbook"] .inp{height:112px;min-height:112px;line-height:28px;margin-bottom:28px}
+:root[data-skin="blackbook"] .row{gap:0 12px}
+:root[data-skin="blackbook"] .btn{min-height:42px;margin-bottom:14px;line-height:1.2}
+:root[data-skin="blackbook"] .btn.big{min-height:56px;margin-bottom:0}
+:root[data-skin="blackbook"] .chips{gap:0 6px}
+:root[data-skin="blackbook"] .chip{height:36px;min-height:36px;margin-bottom:20px;line-height:1.2}
+:root[data-skin="blackbook"] .toggle{min-height:56px;align-items:flex-end}
+:root[data-skin="blackbook"] .toggle input{align-self:center}
+:root[data-skin="blackbook"] .note,:root[data-skin="blackbook"] .empty,:root[data-skin="blackbook"] .err{padding:0;line-height:28px}
+:root[data-skin="blackbook"] .err{min-height:0}
+:root[data-skin="blackbook"] .list{gap:0}
+
+/* peace counter */
+:root[data-skin="blackbook"] .peace .pb{gap:0}
+:root[data-skin="blackbook"] .peace-label,:root[data-skin="blackbook"] .peace-sub,:root[data-skin="blackbook"] .peace-blocker{line-height:28px}
+:root[data-skin="blackbook"] .peace-count{line-height:84px;min-height:84px;position:relative;top:calc(5px - .3185em)}
+
+/* grudge cards: no solid fill, so the ruling shows through and the text stays on it */
+:root[data-skin="blackbook"] .g-card{background:transparent;border:0;border-radius:0;box-shadow:inset 0 0 0 1px #c9b98f;margin-bottom:28px}
+:root[data-skin="blackbook"] .g-body{padding:0 12px;gap:0}
+:root[data-skin="blackbook"] .g-top{line-height:28px;font-size:13px;gap:0 8px}
+:root[data-skin="blackbook"] .g-charge{font-size:24px;line-height:28px;position:relative;top:-3px}
+:root[data-skin="blackbook"] .g-details{font-size:16px;line-height:28px}
+:root[data-skin="blackbook"] .g-meta{gap:0 12px;line-height:28px}
+:root[data-skin="blackbook"] .g-meta dt,:root[data-skin="blackbook"] .g-meta dd{line-height:28px}
+:root[data-skin="blackbook"] .g-count{line-height:28px;gap:0 8px;align-items:flex-start}
+:root[data-skin="blackbook"] .g-count .lbl{position:relative;top:3px}
+:root[data-skin="blackbook"] .g-count .lbl{line-height:28px}
+:root[data-skin="blackbook"] .cd{line-height:28px;font-size:20px;position:relative;top:-1px}
+:root[data-skin="blackbook"] .g-prog{height:28px;background:linear-gradient(rgba(0,0,0,.18),rgba(0,0,0,.18)) 0 11px/100% 6px no-repeat;border-radius:0;overflow:visible}
+:root[data-skin="blackbook"] .g-prog i{height:6px;margin-top:11px}
+:root[data-skin="blackbook"] .g-actions{gap:14px 6px;padding-bottom:14px}
+:root[data-skin="blackbook"] .g-actions .btn{margin-bottom:0}
+:root[data-skin="blackbook"] .stamp{line-height:20px;padding:0 8px;font-size:13px}
+
+/* dossiers */
+:root[data-skin="blackbook"] .p-card{height:56px;background:transparent;border:0;box-shadow:inset 0 0 0 1px #c9b98f;margin-bottom:28px;padding:0 10px;grid-template-columns:40px 1fr auto}
+:root[data-skin="blackbook"] .p-card .avatar{width:40px;height:40px}
+:root[data-skin="blackbook"] .p-card br{display:none}
+:root[data-skin="blackbook"] .p-card .p-name,:root[data-skin="blackbook"] .p-card .p-meta,:root[data-skin="blackbook"] .d-head .p-name,:root[data-skin="blackbook"] .d-head .p-meta{display:block;line-height:28px;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root[data-skin="blackbook"] .p-meta{font-size:13px}
+:root[data-skin="blackbook"] .badge,:root[data-skin="blackbook"] .hist .p-meta{line-height:1}
+:root[data-skin="blackbook"] .d-head{min-height:84px}
+:root[data-skin="blackbook"] .d-head .p-name{font-size:22px;white-space:normal;position:relative;top:-1px}
+:root[data-skin="blackbook"] .d-head .p-meta{white-space:normal}
+:root[data-skin="blackbook"] .d-standing{font-size:22px;line-height:28px;position:relative;top:-4px}
+:root[data-skin="blackbook"] .spark{height:84px;width:100%}
+.spark path{vector-effect:non-scaling-stroke}
+:root[data-skin="blackbook"] .hist{font-size:15px}
+:root[data-skin="blackbook"] .hist li{padding:0 0 0 14px;gap:0}
+:root[data-skin="blackbook"] .hist li::before{top:9px}
+:root[data-skin="blackbook"] .hist .n{line-height:28px;font-size:13px}
+
+/* settings */
+:root[data-skin="blackbook"] .skins{gap:0 14px}
+:root[data-skin="blackbook"] .skin-opt{height:84px;margin-bottom:28px;border:0;box-shadow:0 0 0 2px var(--line)}
+:root[data-skin="blackbook"] .skin-opt[aria-pressed="true"]{box-shadow:0 0 0 3px var(--accent)}
+:root[data-skin="blackbook"] .skin-opt .pv{height:56px}
+:root[data-skin="blackbook"] .skin-opt .nm{height:28px;line-height:28px;padding:0 8px;font-size:15px}
+:root[data-skin="blackbook"] .manual h3{margin:28px 0 0;font-size:17px;line-height:28px}
+:root[data-skin="blackbook"] .manual h3:first-child{margin-top:0}
+:root[data-skin="blackbook"] .manual p,:root[data-skin="blackbook"] .manual li{line-height:28px;font-size:16px}
+:root[data-skin="blackbook"] .manual ol,:root[data-skin="blackbook"] .manual ul{margin:0;gap:0}
+
+/* gauge and knob: fixed row counts so what follows stays on the lines */
+:root[data-skin="blackbook"] .instrument{gap:0}
+:root[data-skin="blackbook"] .gauge{height:224px;padding:0 8px;display:flex;flex-direction:column;justify-content:flex-end;margin-bottom:28px;background:transparent;border:0;box-shadow:inset 0 0 0 1px #c9b98f}
+:root[data-skin="blackbook"] .gauge svg{height:168px}
+:root[data-skin="blackbook"] .gauge-read{height:56px;align-items:center}
+:root[data-skin="blackbook"] .knob-zone{height:224px;justify-content:flex-start;gap:0;margin-bottom:28px}
+:root[data-skin="blackbook"] .knob-wrap{height:168px;align-items:center}
+:root[data-skin="blackbook"] .knob-zone .hint{line-height:28px;font-size:13px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -1331,7 +1423,7 @@ function spark(hist) {
   let d = `M${X(hist[0].at)} ${Y(hist[0].score)}`;
   for (let i = 1; i < hist.length; i++) d += ` H${X(hist[i].at)} V${Y(hist[i].score)}`;
   const last = hist[hist.length - 1];
-  return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="Standing score over time">
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Standing score over time">
     <line x1="${pad}" x2="${W - pad}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line)" stroke-width="1"/>
     <path d="${d} V${Y(0)} H${X(hist[0].at)}Z" fill="var(--accent)" opacity=".15"/>
     <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2"/>
