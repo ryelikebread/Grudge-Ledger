@@ -1,0 +1,10 @@
+# Plain HTTP on port 8080. Fine for a home network or behind your own reverse proxy.
+# For automatic HTTPS (needed to install it as an app on a phone), use docker-compose.https.yml.
+services:
+  grudge-ledger:
+    build: .
+    image: grudge-ledger
+    container_name: grudge-ledger
+    restart: unless-stopped
+    ports:
+      - "8080:80"

@@ -1,0 +1,1281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Grudge Ledger</title>
+<meta name="description" content="Log grudges to the hour, with a severity knob, statute-of-limitations countdowns and a countdown to peace.">
+<meta name="theme-color" content="#15170f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Grudge Ledger">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+/* Layout: one column of "panels" (windows / console plates / book pages / folders) over a skin backdrop, with a fixed bottom tab bar. Each skin is a committed single look, so there is no light/dark split; every color is set per skin. */
+:root{
+  --bg:#15170f; --bg-img:none; --surface:#262a1e; --surface2:#1b1e15; --ink:#e9e3c6; --panel-ink:#e9e3c6; --muted:#a39d82;
+  --accent:#ffb300; --danger:#ff3b1f; --ok:#7bd88f; --line:#4a503a; --field:#11130c; --field-ink:#ffcf5a;
+  --nav-bg:#0d0f09; --nav-ink:#a39d82; --nav-active:#ffb300;
+  --gauge-face:#0f110b; --gauge-ink:#e9e3c6; --needle:#f4f1e4; --hub:#c9c2a0;
+  --knob-face:#2f3327; --knob-ring:#0b0c08; --knob-mark:#ffb300; --knob-ticks:#6c7258;
+  --font-display:"Black Ops One","Impact",system-ui,sans-serif;
+  --font-body:"Share Tech Mono","Courier New",ui-monospace,monospace;
+  --font-hand:"Share Tech Mono","Courier New",monospace;
+  --font-num:"Share Tech Mono","Courier New",ui-monospace,monospace;
+  --radius:4px;
+  --sev1:#2fa84f; --sev2:#9bc53d; --sev3:#f2c12e; --sev4:#f07f1d; --sev5:#d7261e;
+  color-scheme:dark;
+}
+/* ---------- skin: Windows 98 ---------- */
+:root[data-skin="win98"]{
+  --bg:#008080; --surface:#c0c0c0; --surface2:#dfdfdf; --ink:#000; --panel-ink:#000; --muted:#404040;
+  --accent:#000080; --danger:#a00000; --ok:#006400; --line:#808080; --field:#fff; --field-ink:#000;
+  --nav-bg:#c0c0c0; --nav-ink:#000; --nav-active:#000080;
+  --gauge-face:#fff; --gauge-ink:#000; --needle:#000; --hub:#404040;
+  --knob-face:#c0c0c0; --knob-ring:#808080; --knob-mark:#000080; --knob-ticks:#000;
+  --font-display:Tahoma,"Segoe UI","MS Sans Serif",Verdana,sans-serif;
+  --font-body:Tahoma,"Segoe UI","MS Sans Serif",Verdana,sans-serif;
+  --font-hand:Tahoma,"Segoe UI",Verdana,sans-serif;
+  --font-num:"Courier Prime","Courier New",monospace;
+  --radius:0; color-scheme:light;
+}
+/* ---------- skin: Little Black Book ---------- */
+:root[data-skin="blackbook"]{
+  --bg:#0e0c0b; --surface:#f1e9d5; --surface2:#e6dcc2; --ink:#d8c08a; --panel-ink:#211b14; --muted:#6d6151;
+  --accent:#b8892f; --danger:#7d1420; --ok:#2f5d3a; --line:#cdbf9f; --field:#fbf6ea; --field-ink:#211b14;
+  --nav-bg:#090807; --nav-ink:#8f7a52; --nav-active:#e0bd6a;
+  --gauge-face:#fbf6ea; --gauge-ink:#211b14; --needle:#7d1420; --hub:#211b14;
+  --knob-face:#1b1814; --knob-ring:#b8892f; --knob-mark:#e0bd6a; --knob-ticks:#8f7a52;
+  --font-display:"Bodoni Moda","Didot",Georgia,serif;
+  --font-body:"Cormorant Garamond",Garamond,Georgia,serif;
+  --font-hand:"Caveat","Bradley Hand","Segoe Print",cursive;
+  --font-num:"Bodoni Moda",Georgia,serif;
+  --radius:2px; color-scheme:dark;
+}
+/* ---------- skin: Case File ---------- */
+:root[data-skin="casefile"]{
+  --bg:#2a211a; --surface:#e3c88e; --surface2:#d8b977; --ink:#e3c88e; --panel-ink:#2a2117; --muted:#6b5636;
+  --accent:#1f3a7a; --danger:#b3261e; --ok:#2e5e2e; --line:#b89a5c; --field:#f6ecd2; --field-ink:#1d1710;
+  --nav-bg:#1d1611; --nav-ink:#b89a5c; --nav-active:#f2dca8;
+  --gauge-face:#f6ecd2; --gauge-ink:#2a2117; --needle:#1d1710; --hub:#1d1710;
+  --knob-face:#3b2f24; --knob-ring:#1d1611; --knob-mark:#f2dca8; --knob-ticks:#6b5636;
+  --font-display:"Special Elite","Courier New",monospace;
+  --font-body:"Courier Prime","Courier New",monospace;
+  --font-hand:"Special Elite","Courier New",monospace;
+  --font-num:"Courier Prime","Courier New",monospace;
+  --radius:3px; color-scheme:light;
+}
+
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+:root[data-skin="football"] body{background:
+  radial-gradient(circle at 20% 0%,#2a2f1f 0,transparent 55%),
+  repeating-linear-gradient(45deg,#14160e 0 2px,#181a11 2px 4px)}
+:root[data-skin="blackbook"] body{background:
+  radial-gradient(ellipse at 30% 10%,#221d18 0,transparent 60%),
+  radial-gradient(circle at 80% 90%,#1a1612 0,transparent 50%),#0e0c0b}
+:root[data-skin="casefile"] body{background:
+  repeating-linear-gradient(92deg,#2a211a 0 6px,#2f251c 6px 9px,#281f18 9px 15px)}
+:root[data-skin="win98"] body{font-size:14px}
+
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px dashed var(--accent);outline-offset:2px}
+
+#app{max-width:760px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:14px calc(92px + env(safe-area-inset-bottom,0px));
+  display:flex;flex-direction:column;gap:14px}
+.view{display:flex;flex-direction:column;gap:14px}
+
+/* ---------- masthead ---------- */
+.masthead{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.masthead h1{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(22px,6vw,32px);letter-spacing:.04em;line-height:1.05;text-wrap:balance}
+.masthead .sub{margin:2px 0 0;color:var(--muted);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.sync{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+.sync.cloud i{background:var(--ok)} .sync.err i{background:var(--danger)}
+:root[data-skin="football"] .masthead h1{color:var(--accent);text-shadow:0 0 12px rgba(255,179,0,.35)}
+:root[data-skin="football"] .masthead{border:1px solid var(--line);padding:10px 12px;background:linear-gradient(#22261a,#191c13);border-radius:var(--radius);position:relative;overflow:hidden}
+:root[data-skin="football"] .masthead::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:repeating-linear-gradient(-45deg,#ffb300 0 8px,#111 8px 16px)}
+:root[data-skin="blackbook"] .masthead{flex-direction:column;align-items:center;text-align:center;padding:6px 0 4px}
+:root[data-skin="blackbook"] .masthead h1{font-style:italic;color:#e0bd6a;background:linear-gradient(180deg,#f6dc95,#b8892f 60%,#7a5a1d);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:500}
+:root[data-skin="blackbook"] .masthead .sub{color:#8f7a52}
+:root[data-skin="casefile"] .masthead h1{color:#f2dca8}
+:root[data-skin="casefile"] .masthead .sub{color:#b89a5c}
+:root[data-skin="win98"] .masthead{background:linear-gradient(90deg,#000080,#1084d0);color:#fff;padding:4px 4px 4px 8px;box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #dfdfdf;border:2px solid #c0c0c0}
+:root[data-skin="win98"] .masthead h1{font-size:15px;font-weight:700;letter-spacing:0}
+:root[data-skin="win98"] .masthead .sub{color:#dfe8ff;letter-spacing:.02em;text-transform:none;font-size:11px}
+:root[data-skin="win98"] .sync{color:#fff}
+.w98-btns{display:none;gap:2px}
+:root[data-skin="win98"] .w98-btns{display:flex}
+.w98-btns span{width:18px;height:16px;background:#c0c0c0;color:#000;font:700 11px/14px Tahoma,sans-serif;text-align:center;box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #fff,inset -2px -2px #808080,inset 2px 2px #dfdfdf}
+
+/* ---------- panels ---------- */
+.panel{background:var(--surface);color:var(--panel-ink);border-radius:var(--radius);position:relative;min-width:0}
+.panel>.ph{margin:0;display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--font-display);font-weight:400;font-size:14px;letter-spacing:.12em;text-transform:uppercase}
+.panel>.pb{padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.ph .count{font-family:var(--font-num);font-size:12px;opacity:.8}
+
+:root[data-skin="football"] .panel{background:linear-gradient(180deg,#2b2f22,#22261a);border:1px solid var(--line);box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 6px 18px rgba(0,0,0,.45)}
+:root[data-skin="football"] .panel>.ph{padding:8px 12px;background:#14160e;border-bottom:1px solid var(--line);color:var(--accent);border-radius:var(--radius) var(--radius) 0 0}
+:root[data-skin="football"] .panel>.ph::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;background:var(--danger);box-shadow:0 0 8px var(--danger);margin-right:4px;order:-1;animation:blink 1.6s steps(2) infinite}
+:root[data-skin="football"] .panel>.ph{justify-content:flex-start}
+:root[data-skin="football"] .panel>.ph .count{margin-left:auto}
+@keyframes blink{50%{opacity:.25}}
+
+:root[data-skin="win98"] .panel{box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #dfdfdf,inset -2px -2px #808080,inset 2px 2px #fff;padding:3px}
+:root[data-skin="win98"] .panel>.ph{background:linear-gradient(90deg,#000080,#1084d0);color:#fff;padding:3px 6px;font-size:13px;letter-spacing:0;text-transform:none;font-weight:700}
+:root[data-skin="win98"] .panel>.pb{padding:10px}
+
+:root[data-skin="blackbook"] .panel{background:
+  linear-gradient(90deg,transparent 30px,rgba(125,20,32,.45) 30px 31px,transparent 31px),
+  repeating-linear-gradient(180deg,transparent 0 27px,rgba(120,100,70,.22) 27px 28px),var(--surface);
+  box-shadow:0 1px 0 #d4c7a6,0 2px 0 #e9e0c8,0 3px 0 #cfc2a0,0 10px 24px rgba(0,0,0,.6);font-size:17px}
+:root[data-skin="blackbook"] .panel>.ph{padding:14px 14px 0 42px;font-family:var(--font-display);font-style:italic;text-transform:none;letter-spacing:.02em;font-size:20px;color:#3a2c1a}
+:root[data-skin="blackbook"] .panel>.pb{padding:12px 14px 16px 42px}
+
+:root[data-skin="casefile"] .panel{background:linear-gradient(180deg,#e9cf97,#e0c386);margin-top:18px;border-radius:0 6px 6px 6px;box-shadow:0 8px 18px rgba(0,0,0,.45)}
+:root[data-skin="casefile"] .panel>.ph{position:absolute;top:-22px;left:0;height:24px;padding:3px 14px 0;background:#e9cf97;border-radius:6px 10px 0 0;font-size:13px;letter-spacing:.1em;max-width:85%}
+:root[data-skin="casefile"] .panel>.ph .count{display:none}
+:root[data-skin="casefile"] .panel>.pb{padding-top:16px}
+
+/* ---------- peace counter ---------- */
+.peace .pb{align-items:center;text-align:center;gap:6px}
+.peace-label{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.peace-count{font-family:var(--font-num);font-size:clamp(26px,8.5vw,46px);line-height:1.05;font-variant-numeric:tabular-nums;letter-spacing:.02em;word-break:break-word}
+.peace-sub{font-size:13px;color:var(--muted);max-width:52ch;text-wrap:balance}
+.peace-blocker{font-size:12px;letter-spacing:.06em}
+:root[data-skin="football"] .peace-count{color:var(--danger);text-shadow:0 0 14px rgba(255,59,31,.55);background:#0b0c07;padding:8px 14px;border:1px solid #3a2a1a;border-radius:3px;width:100%}
+:root[data-skin="football"] .peace-count.calm{color:var(--ok);text-shadow:0 0 14px rgba(123,216,143,.5)}
+:root[data-skin="win98"] .peace-count{background:#000;color:#00ff40;padding:6px 10px;width:100%;box-shadow:inset 1px 1px #808080,inset -1px -1px #fff,inset 2px 2px #0a0a0a}
+:root[data-skin="blackbook"] .peace-count{font-style:italic;color:#7d1420}
+:root[data-skin="casefile"] .peace-count{color:#1d1710}
+
+/* ---------- grudge cards ---------- */
+.list{display:flex;flex-direction:column;gap:10px}
+.empty{padding:6px 2px;color:var(--muted);font-size:14px}
+.g-card{display:grid;grid-template-columns:6px 1fr;border-radius:var(--radius);overflow:hidden;background:var(--surface2);min-width:0}
+.g-stripe{background:var(--sev)}
+.g-body{padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.g-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.g-who{font-weight:700}
+.g-sev{font-family:var(--font-num);display:inline-flex;align-items:center;gap:6px}
+.g-sev::before{content:"";width:10px;height:10px;background:var(--sev);border-radius:2px}
+.g-charge{margin:0;font-family:var(--font-hand);font-size:19px;line-height:1.2;font-weight:700;overflow-wrap:anywhere}
+.g-details{margin:0;font-size:14px;color:var(--muted);overflow-wrap:anywhere;white-space:pre-wrap}
+.g-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 12px;margin:0;font-size:12px}
+.g-meta dt{color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:10.5px}
+.g-meta dd{margin:0;font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.g-count{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.g-count .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.cd{font-family:var(--font-num);font-size:18px;font-variant-numeric:tabular-nums}
+.g-prog{height:6px;background:rgba(0,0,0,.18);border-radius:3px;overflow:hidden}
+.g-prog i{display:block;height:100%;background:var(--sev);width:0}
+.g-actions{display:flex;gap:6px;flex-wrap:wrap}
+.g-card.closed{opacity:.86}
+.stamp{display:inline-block;border:2px solid currentColor;padding:1px 8px;font-family:var(--font-display);font-size:13px;letter-spacing:.12em;text-transform:uppercase;transform:rotate(-3deg);color:var(--danger)}
+.stamp.forgiven{color:var(--ok)} .stamp.settled{color:var(--accent)}
+.g-card.flash{animation:flash 1.4s ease-out}
+@keyframes flash{0%{box-shadow:0 0 0 3px var(--danger)}100%{box-shadow:0 0 0 0 transparent}}
+
+:root[data-skin="football"] .g-card{background:#171a11;border:1px solid #3b402e}
+:root[data-skin="football"] .cd{color:var(--accent)}
+:root[data-skin="win98"] .g-card{background:#fff;box-shadow:inset 1px 1px #808080,inset -1px -1px #dfdfdf;border-radius:0}
+:root[data-skin="blackbook"] .g-card{background:rgba(255,252,242,.72);border:1px solid #d8cba9}
+:root[data-skin="blackbook"] .g-charge{font-size:24px;color:#1c2a52}
+:root[data-skin="blackbook"] .g-details{color:#4c4033;font-size:16px}
+:root[data-skin="casefile"] .g-card{background:#f6ecd2;box-shadow:1px 2px 0 rgba(0,0,0,.18)}
+
+/* ---------- buttons & fields ---------- */
+.btn{border:1px solid var(--line);background:transparent;color:inherit;padding:7px 12px;border-radius:var(--radius);font-size:13px;letter-spacing:.06em;text-transform:uppercase;min-height:36px}
+.btn.primary{background:var(--accent);color:var(--surface2);border-color:var(--accent);font-weight:700}
+.btn.danger{border-color:var(--danger);color:var(--danger)}
+.btn.big{min-height:52px;font-size:16px;letter-spacing:.14em;width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+:root[data-skin="football"] .btn.primary{color:#111;background:linear-gradient(#ffc640,#e09a00);box-shadow:0 0 0 2px #111,0 0 0 3px #5a4a14}
+:root[data-skin="football"] .btn.danger{background:repeating-linear-gradient(-45deg,rgba(255,59,31,.12) 0 6px,transparent 6px 12px)}
+:root[data-skin="win98"] .btn{background:#c0c0c0;color:#000;border:0;border-radius:0;text-transform:none;letter-spacing:0;box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #fff,inset -2px -2px #808080,inset 2px 2px #dfdfdf}
+:root[data-skin="win98"] .btn:active{box-shadow:inset 1px 1px #0a0a0a,inset -1px -1px #fff,inset 2px 2px #808080,inset -2px -2px #dfdfdf}
+:root[data-skin="win98"] .btn.primary{font-weight:700;outline:1px solid #000;outline-offset:-1px}
+:root[data-skin="win98"] .btn.danger{color:#a00000}
+:root[data-skin="blackbook"] .btn{font-family:var(--font-body);font-weight:700;font-size:15px;text-transform:none;letter-spacing:.04em;border-color:#b8a57c}
+:root[data-skin="blackbook"] .btn.primary{background:#16130f;color:#e0bd6a;border-color:#b8892f}
+:root[data-skin="casefile"] .btn.primary{background:#1d1710;color:#f2dca8;border-color:#1d1710}
+
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field>label,.lbl-sm{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.field input,.field select,.field textarea,.inp{width:100%;background:var(--field);color:var(--field-ink);border:1px solid var(--line);border-radius:var(--radius);padding:9px 10px;font-size:16px;min-height:42px}
+.field textarea{min-height:76px;resize:vertical}
+:root[data-skin="win98"] .field input,:root[data-skin="win98"] .field select,:root[data-skin="win98"] .field textarea,:root[data-skin="win98"] .inp{border:0;box-shadow:inset 1px 1px #808080,inset -1px -1px #fff,inset 2px 2px #0a0a0a,inset -2px -2px #dfdfdf}
+:root[data-skin="blackbook"] .field input,:root[data-skin="blackbook"] .field textarea,:root[data-skin="blackbook"] .field select{font-family:var(--font-hand);font-size:21px;background:transparent;border:0;border-bottom:1px solid #8f7a52;border-radius:0;color:#1c2a52}
+:root[data-skin="football"] .field input,:root[data-skin="football"] .field select,:root[data-skin="football"] .field textarea{box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>.field{flex:1 1 140px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:transparent;color:inherit;border-radius:999px;padding:6px 12px;font-size:13px;min-height:34px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface2);font-weight:700}
+:root[data-skin="win98"] .chip{border-radius:0;background:#c0c0c0;border:0;box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #fff,inset -2px -2px #808080,inset 2px 2px #dfdfdf}
+:root[data-skin="win98"] .chip[aria-pressed="true"]{background:#000080;color:#fff;box-shadow:inset 1px 1px #0a0a0a,inset -1px -1px #fff}
+:root[data-skin="football"] .chip[aria-pressed="true"]{color:#111}
+.err{color:var(--danger);font-size:13px;min-height:1em;margin:0}
+
+/* ---------- severity instrument ---------- */
+.instrument{display:grid;grid-template-columns:1fr;gap:10px;justify-items:center}
+@media (min-width:560px){.instrument{grid-template-columns:1.25fr 1fr;align-items:center}}
+.gauge{width:100%;max-width:340px;background:var(--gauge-face);border-radius:12px;padding:8px 8px 6px}
+.gauge svg{display:block;width:100%;height:auto}
+.gauge #needle{transition:transform .32s cubic-bezier(.34,1.56,.64,1);transform-origin:110px 112px;transform-box:view-box}
+.gauge-read{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:2px 6px;color:var(--gauge-ink)}
+.gauge-read .num{font-family:var(--font-num);font-size:30px;font-variant-numeric:tabular-nums;line-height:1}
+.gauge-read .tier{font-family:var(--font-display);font-size:14px;letter-spacing:.12em;text-transform:uppercase;text-align:right}
+.gauge.locked{animation:lockpulse .6s ease-out}
+@keyframes lockpulse{0%{box-shadow:0 0 0 0 var(--accent)}40%{box-shadow:0 0 0 6px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
+:root[data-skin="football"] .gauge{border:1px solid #3b402e;box-shadow:inset 0 0 22px rgba(0,0,0,.8)}
+:root[data-skin="win98"] .gauge{border-radius:0;box-shadow:inset 1px 1px #808080,inset -1px -1px #fff,inset 2px 2px #0a0a0a}
+:root[data-skin="blackbook"] .gauge{border:1px solid #cdbf9f}
+:root[data-skin="casefile"] .gauge{border:1px solid #b89a5c}
+
+.knob-zone{display:flex;flex-direction:column;align-items:center;gap:8px}
+.knob-wrap{display:flex;align-items:center;gap:14px}
+.knob{width:148px;height:148px;border-radius:50%;position:relative;touch-action:none;cursor:ns-resize;user-select:none;-webkit-user-select:none}
+.knob-ticks{position:absolute;inset:0}
+.knob-ticks span{position:absolute;left:50%;top:0;width:2px;height:9px;margin-left:-1px;background:var(--knob-ticks);transform-origin:1px 74px}
+.knob-ticks span.major{height:13px;width:3px;margin-left:-1.5px;transform-origin:1.5px 74px}
+.knob-cap{position:absolute;inset:18px;border-radius:50%;background:
+  repeating-conic-gradient(from 0deg,rgba(0,0,0,.28) 0 4deg,rgba(255,255,255,.07) 4deg 8deg),
+  radial-gradient(circle at 35% 30%,rgba(255,255,255,.25),transparent 55%),var(--knob-face);
+  box-shadow:0 0 0 4px var(--knob-ring),0 8px 18px rgba(0,0,0,.55),inset 0 -6px 12px rgba(0,0,0,.4)}
+.knob-cap::after{content:"";position:absolute;inset:22px;border-radius:50%;background:radial-gradient(circle at 40% 35%,rgba(255,255,255,.2),transparent 60%),var(--knob-face);box-shadow:inset 0 2px 4px rgba(0,0,0,.5)}
+.knob-mark{position:absolute;left:50%;top:6px;width:5px;height:24px;margin-left:-2.5px;border-radius:3px;background:var(--knob-mark);box-shadow:0 0 6px var(--knob-mark);z-index:1}
+.knob:active .knob-cap,.knob.dragging .knob-cap{box-shadow:0 0 0 4px var(--accent),0 8px 18px rgba(0,0,0,.55),inset 0 -6px 12px rgba(0,0,0,.4)}
+.kbtn{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:transparent;color:inherit;font-size:22px;line-height:1}
+:root[data-skin="win98"] .kbtn{border-radius:0;background:#c0c0c0;border:0;box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #fff,inset -2px -2px #808080,inset 2px 2px #dfdfdf}
+:root[data-skin="win98"] .knob-cap{background:repeating-conic-gradient(from 0deg,#a8a8a8 0 4deg,#d4d4d4 4deg 8deg),#c0c0c0}
+.hint{margin:0;font-size:12px;color:var(--muted);text-align:center}
+
+/* ---------- dossiers ---------- */
+.p-card{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;width:100%;text-align:left;background:var(--surface2);color:inherit;border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px}
+.avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-family:var(--font-display);font-size:17px;background:var(--accent);color:var(--surface2)}
+:root[data-skin="win98"] .avatar{border-radius:0}
+:root[data-skin="football"] .avatar{color:#111}
+.p-name{font-weight:700;font-size:16px;overflow-wrap:anywhere}
+.p-meta{font-size:12px;color:var(--muted)}
+.badge{font-size:11px;letter-spacing:.1em;text-transform:uppercase;border:1px solid currentColor;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.st0{color:var(--ok)} .st1{color:var(--sev3)} .st2{color:var(--sev4)} .st3{color:var(--sev5)} .st4{color:var(--danger)}
+:root[data-skin="win98"] .st1,:root[data-skin="casefile"] .st1,:root[data-skin="blackbook"] .st1{color:#8a6d00}
+.d-head{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.d-standing{font-family:var(--font-display);font-size:22px;letter-spacing:.06em;text-transform:uppercase}
+.spark{width:100%;height:auto;display:block}
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;font-size:14px}
+.hist li{display:flex;flex-direction:column;gap:3px;padding:8px 0 8px 14px;border-left:2px solid var(--line);position:relative;overflow-wrap:anywhere}
+.hist li::before{content:"";position:absolute;left:-6px;top:12px;width:10px;height:10px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+.hist .n{font-family:var(--font-num);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+details.add>summary{cursor:pointer;list-style:none}
+details.add>summary::-webkit-details-marker{display:none}
+
+/* ---------- settings ---------- */
+.skins{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.skin-opt{border:2px solid var(--line);border-radius:6px;padding:0;overflow:hidden;background:none;text-align:left;color:inherit}
+.skin-opt[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.skin-opt .pv{height:64px;display:flex;align-items:flex-end;padding:8px;font-size:15px}
+.skin-opt .nm{display:block;padding:6px 8px;font-size:13px;background:var(--surface2)}
+.pv-football{background:repeating-linear-gradient(-45deg,#ffb300 0 7px,#111 7px 14px) bottom/100% 6px no-repeat,#1b1e15;color:#ffb300;font-family:"Black Ops One",sans-serif}
+.pv-win98{background:#008080;color:#fff;font-family:Tahoma,sans-serif}
+.pv-win98 b{background:linear-gradient(90deg,#000080,#1084d0);padding:2px 6px;font-size:12px}
+.pv-blackbook{background:#0e0c0b;color:#e0bd6a;font-family:"Bodoni Moda",serif;font-style:italic}
+.pv-casefile{background:#e3c88e;color:#b3261e;font-family:"Special Elite",monospace}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.toggle input{width:22px;height:22px;accent-color:var(--accent)}
+.manual h3{margin:6px 0 2px;font-family:var(--font-display);font-weight:400;font-size:15px;letter-spacing:.06em}
+.manual p,.manual li{margin:0;font-size:14px;max-width:65ch}
+.manual ol,.manual ul{margin:4px 0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.note{font-size:13px;color:var(--muted);margin:0}
+
+/* ---------- tab bar ---------- */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;
+  padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px));
+  background:var(--nav-bg);border-top:1px solid var(--line)}
+.tab{background:none;border:0;color:var(--nav-ink);display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;border-radius:var(--radius);min-height:48px}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--nav-active)}
+:root[data-skin="football"] .tab[aria-current="page"]{text-shadow:0 0 8px rgba(255,179,0,.6)}
+:root[data-skin="win98"] .tabs{border-top:0;box-shadow:inset 0 1px #fff,inset 0 2px #dfdfdf}
+:root[data-skin="win98"] .tab{text-transform:none;letter-spacing:0;box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #fff,inset -2px -2px #808080,inset 2px 2px #dfdfdf;border-radius:0}
+:root[data-skin="win98"] .tab[aria-current="page"]{box-shadow:inset 1px 1px #0a0a0a,inset -1px -1px #fff,inset 2px 2px #808080;background:repeating-conic-gradient(#c0c0c0 0 25%,#fff 0 50%) 0 0/2px 2px;font-weight:700}
+:root[data-skin="blackbook"] .tab{font-family:var(--font-display);font-style:italic;text-transform:none;letter-spacing:.02em;font-size:13px}
+
+/* ---------- modals ---------- */
+.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background:rgba(0,0,0,.78);overflow-y:auto}
+.sheet{width:100%;max-width:460px;background:var(--surface);color:var(--panel-ink);border-radius:var(--radius);display:flex;flex-direction:column;gap:12px;padding:20px}
+.sheet h2{margin:0;font-family:var(--font-display);font-weight:400;font-size:24px;letter-spacing:.06em;text-transform:uppercase;line-height:1.1;text-wrap:balance}
+.sheet .warn{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--danger);font-weight:700}
+.sheet .summary{border:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.sheet .summary b{font-family:var(--font-hand);font-size:18px}
+.oath{font-size:14px;margin:0}
+.hold{position:relative;overflow:hidden;width:100%;min-height:64px;border:2px solid var(--danger);background:transparent;color:var(--danger);font-family:var(--font-display);font-size:17px;letter-spacing:.16em;text-transform:uppercase;border-radius:var(--radius);touch-action:none;user-select:none;-webkit-user-select:none}
+.hold .fill{position:absolute;inset:0;background:var(--danger);transform-origin:left;transform:scaleX(var(--p,0))}
+.hold .lbl{position:relative;mix-blend-mode:normal}
+.hold.active .lbl{color:#fff}
+.sheet.shake{animation:shake .12s linear infinite}
+@keyframes shake{0%{transform:translate(0,0)}25%{transform:translate(calc(var(--amp,1px)*-1),var(--amp,1px))}50%{transform:translate(var(--amp,1px),0)}75%{transform:translate(0,calc(var(--amp,1px)*-1))}}
+.modal.sealed .sheet{animation:seal .5s ease-out}
+@keyframes seal{0%{transform:scale(1)}30%{transform:scale(1.04)}100%{transform:scale(.96);opacity:0}}
+:root[data-skin="football"] .sheet{background:#14160e;border:2px solid var(--danger);box-shadow:0 0 0 6px #111,0 0 0 8px #5a1a10,0 0 40px rgba(255,59,31,.35)}
+:root[data-skin="football"] .sheet::before{content:"";height:10px;margin:-20px -20px 0;background:repeating-linear-gradient(-45deg,#ff3b1f 0 10px,#111 10px 20px)}
+:root[data-skin="football"] .sheet h2{color:var(--danger)}
+:root[data-skin="win98"] .sheet{padding:3px;gap:0;box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #dfdfdf,inset -2px -2px #808080,inset 2px 2px #fff}
+:root[data-skin="win98"] .sheet>*:not(.w98-title){margin:10px 12px 0}
+:root[data-skin="win98"] .sheet>*:last-child{margin-bottom:12px}
+:root[data-skin="win98"] .sheet h2{font-size:15px;font-weight:700;text-transform:none;letter-spacing:0}
+:root[data-skin="win98"] .hold{border-radius:0;background:#c0c0c0;font-family:Tahoma,sans-serif;letter-spacing:.04em;font-weight:700;box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #fff,inset -2px -2px #808080,inset 2px 2px #dfdfdf;border:0}
+:root[data-skin="win98"] .hold .fill{background:#000080}
+.w98-title{display:none}
+:root[data-skin="win98"] .w98-title{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#000080,#1084d0);color:#fff;font-weight:700;font-size:13px;padding:3px 4px 3px 6px}
+:root[data-skin="blackbook"] .sheet{background:#16130f;color:#e8d9b5;border:1px solid #b8892f;box-shadow:0 0 0 4px #16130f,0 0 0 5px #6b5222}
+:root[data-skin="blackbook"] .sheet h2{font-style:italic;text-transform:none;color:#e0bd6a;letter-spacing:.01em;font-size:28px}
+:root[data-skin="blackbook"] .sheet .summary{border-color:#6b5222}
+:root[data-skin="blackbook"] .sheet .summary b{font-size:24px;color:#f1e9d5}
+:root[data-skin="blackbook"] .hold{border-color:#b8892f;color:#e0bd6a;font-style:italic;text-transform:none;letter-spacing:.06em;font-size:20px}
+:root[data-skin="blackbook"] .hold .fill{background:#7d1420}
+:root[data-skin="casefile"] .sheet{background:#f6ecd2;position:relative;box-shadow:0 12px 30px rgba(0,0,0,.6)}
+:root[data-skin="casefile"] .sheet::after{content:"CONFIDENTIAL";position:absolute;right:10px;top:12px;transform:rotate(8deg);border:3px double #b3261e;color:#b3261e;font-family:"Special Elite",monospace;padding:2px 8px;font-size:13px;letter-spacing:.14em;opacity:.8}
+:root[data-skin="casefile"] .sheet h2{padding-right:120px}
+
+.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--panel-ink);color:var(--surface);padding:10px 16px;border-radius:var(--radius);font-size:14px;max-width:calc(100% - 32px);box-shadow:0 6px 18px rgba(0,0,0,.4)}
+:root[data-skin="football"] .toast{background:#111;color:var(--accent);border:1px solid var(--accent)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="masthead">
+    <div>
+      <h1 id="appTitle">Grudge Ledger</h1>
+      <p class="sub" id="appSub">Every slight. Logged to the hour.</p>
+    </div>
+    <div class="row" style="align-items:center;gap:8px">
+      <span class="sync" id="sync"><i></i><span>This device</span></span>
+      <span class="w98-btns" aria-hidden="true"><span>_</span><span>□</span><span>×</span></span>
+    </div>
+  </header>
+
+  <!-- LEDGER -->
+  <section class="view" id="view-ledger">
+    <div class="panel peace">
+      <h2 class="ph" id="peaceTitle">Countdown to peace</h2>
+      <div class="pb">
+        <div class="peace-label" id="peaceLabel">Time until every grudge expires</div>
+        <div class="peace-count" id="peaceCount">AT PEACE</div>
+        <div class="peace-sub" id="peaceSub"></div>
+        <div class="peace-blocker" id="peaceBlocker"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2 class="ph"><span id="openTitle">Outstanding grudges</span><span class="count" id="openCount"></span></h2>
+      <div class="pb"><div class="list" id="openList"></div></div>
+    </div>
+    <div class="panel">
+      <h2 class="ph"><span>Closed cases</span><span class="count" id="closedCount"></span></h2>
+      <div class="pb"><div class="list" id="closedList"></div></div>
+    </div>
+  </section>
+
+  <!-- FILE A GRUDGE -->
+  <section class="view" id="view-file" hidden>
+    <form class="panel" id="fileForm" novalidate>
+      <h2 class="ph" id="fileTitle">File a grievance</h2>
+      <div class="pb">
+        <div class="field">
+          <label for="fWho">The accused</label>
+          <select id="fWho"></select>
+        </div>
+        <div class="row" id="newWhoRow" hidden>
+          <div class="field"><label for="fNewName">Name</label><input id="fNewName" autocomplete="off" placeholder="Their full name"></div>
+          <div class="field"><label for="fNewRel">Relation to you</label><input id="fNewRel" autocomplete="off" placeholder="Coworker, sibling, ex…"></div>
+        </div>
+        <div class="field">
+          <label for="fCharge">The charge</label>
+          <input id="fCharge" maxlength="120" autocomplete="off" placeholder="Ate my labeled leftovers">
+        </div>
+        <div class="field">
+          <label for="fDetails">Account of events (optional)</label>
+          <textarea id="fDetails" maxlength="2000" placeholder="What happened, who saw it, what was said."></textarea>
+        </div>
+        <div class="field">
+          <label for="fWhen">Hour of the offense</label>
+          <input id="fWhen" type="datetime-local" step="3600">
+        </div>
+      </div>
+    </form>
+
+    <div class="panel">
+      <h2 class="ph">Severity</h2>
+      <div class="pb">
+        <div class="instrument">
+          <div class="gauge" id="gauge">
+            <svg viewBox="0 0 220 128" id="gaugeSvg" role="img" aria-label="Severity meter"></svg>
+            <div class="gauge-read"><span class="num" id="sevNum">50</span><span class="tier" id="sevTier">Felony</span></div>
+          </div>
+          <div class="knob-zone">
+            <div class="knob-wrap">
+              <button type="button" class="kbtn" id="kMinus" aria-label="Lower severity">−</button>
+              <div class="knob" id="knob" role="slider" tabindex="0" aria-label="Severity, 1 to 100" aria-valuemin="1" aria-valuemax="100" aria-valuenow="50">
+                <div class="knob-ticks" id="knobTicks"></div>
+                <div class="knob-cap" id="knobCap"><span class="knob-mark"></span></div>
+              </div>
+              <button type="button" class="kbtn" id="kPlus" aria-label="Raise severity">+</button>
+            </div>
+            <p class="hint">Drag the knob up or down, or scroll on it. Let go to lock it in.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 class="ph">Statute of limitations</h2>
+      <div class="pb">
+        <div class="chips" id="statChips"></div>
+        <div class="row">
+          <div class="field"><label for="fStatN">Length</label><input id="fStatN" type="number" min="1" max="999" inputmode="numeric" value="30"></div>
+          <div class="field"><label for="fStatU">Unit</label>
+            <select id="fStatU"><option value="h">Hours</option><option value="d" selected>Days</option><option value="w">Weeks</option><option value="m">Months</option><option value="y">Years</option><option value="eternal">Eternal (never expires)</option></select>
+          </div>
+        </div>
+        <p class="note" id="statPreview"></p>
+        <p class="err" id="fileErr" role="alert"></p>
+        <button type="button" class="btn primary big" id="fileBtn">Enter into the ledger</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOSSIERS -->
+  <section class="view" id="view-people" hidden>
+    <div id="peopleIndex" class="view">
+      <div class="panel">
+        <h2 class="ph"><span>Dossiers</span><span class="count" id="peopleCount"></span></h2>
+        <div class="pb">
+          <details class="add" id="addPerson">
+            <summary class="btn">Open a new dossier</summary>
+            <form id="personForm" class="view" style="margin-top:12px" novalidate>
+              <div class="row">
+                <div class="field"><label for="pName">Name</label><input id="pName" autocomplete="off" required></div>
+                <div class="field"><label for="pRel">Relation to you</label><input id="pRel" autocomplete="off"></div>
+              </div>
+              <div class="field"><label for="pNotes">Known associates, aliases, notes</label><textarea id="pNotes"></textarea></div>
+              <p class="err" id="personErr" role="alert"></p>
+              <button class="btn primary" type="submit">Open dossier</button>
+            </form>
+          </details>
+          <div class="list" id="peopleList"></div>
+        </div>
+      </div>
+    </div>
+    <div id="personDetail" class="view" hidden></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="view-settings" hidden>
+    <div class="panel">
+      <h2 class="ph">Skin</h2>
+      <div class="pb"><div class="skins" id="skinList"></div></div>
+    </div>
+    <div class="panel">
+      <h2 class="ph">Sound and haptics</h2>
+      <div class="pb">
+        <label class="toggle" for="sSound"><span>Knob clicks and sound effects</span><input type="checkbox" id="sSound"></label>
+        <label class="toggle" for="sHaptics"><span>Vibrate when severity locks and on sealing</span><input type="checkbox" id="sHaptics"></label>
+        <div class="row"><button class="btn" type="button" id="testBuzz">Test vibration</button><button class="btn" type="button" id="testClick">Test click</button></div>
+        <p class="note" id="buzzNote">Vibration works on most Android phones. iPhones (Safari and the Claude app) don't allow web pages to vibrate, so you'll get the sound and the visual lock instead.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <h2 class="ph">Records</h2>
+      <div class="pb">
+        <p class="note" id="storeNote"></p>
+        <div class="row"><button class="btn" type="button" id="copyBackup">Copy backup</button><button class="btn" type="button" id="showRestore">Restore from backup</button></div>
+        <div id="restoreBox" class="view" hidden>
+          <div class="field"><label for="restoreText">Paste a backup</label><textarea id="restoreText" class="inp" placeholder='{"v":1,...}'></textarea></div>
+          <button class="btn danger" type="button" id="doRestore">Replace my ledger with this backup</button>
+        </div>
+        <textarea id="backupOut" class="inp" readonly hidden aria-label="Backup text"></textarea>
+        <button class="btn danger" type="button" id="burn">Burn the ledger (erase everything)</button>
+      </div>
+    </div>
+    <div class="panel manual">
+      <h2 class="ph">Field manual</h2>
+      <div class="pb">
+        <h3>Filing a grudge</h3>
+        <ol>
+          <li>Open <b>File</b>. Pick the accused, or choose "New person" to open their dossier on the spot.</li>
+          <li>Write the charge and, if you like, the full account.</li>
+          <li>Set the hour it happened. Everything is kept to the hour.</li>
+          <li>Turn the severity knob (1 to 100). Each step clicks; letting go locks it in and the phone buzzes.</li>
+          <li>Pick a statute of limitations. The clock starts at the hour of the offense.</li>
+          <li>Press <b>Enter into the ledger</b>, then press and hold the red button until it fills. Letting go early cancels.</li>
+        </ol>
+        <h3>Countdown to peace</h3>
+        <p>Peace arrives when the last outstanding grudge expires. One eternal grudge means peace never comes until you forgive or settle it.</p>
+        <h3>Closing a case</h3>
+        <ul>
+          <li><b>Forgive</b> drops the grudge early.</li>
+          <li><b>Settled</b> means the matter was dealt with.</li>
+          <li><b>Strike</b> deletes the entry as if it were never filed.</li>
+          <li>When a statute runs out, the grudge closes itself as <b>Statute lapsed</b>.</li>
+        </ul>
+        <h3>Standing</h3>
+        <p>Each person's standing is the total severity of their open grudges: In Good Standing (0), On Notice (1+), Under Review (50+), Persona Non Grata (150+), Excommunicated (300+). Every change is written to their dossier's history.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs" aria-label="Sections">
+  <button class="tab" data-tab="ledger" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h11l3 3v15H5z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg><span>Ledger</span></button>
+  <button class="tab" data-tab="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 12l4-4"/><path d="M12 4v2M20 12h-2M4 12h2"/></svg><span>File</span></button>
+  <button class="tab" data-tab="people"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span>Dossiers</span></button>
+  <button class="tab" data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span>Settings</span></button>
+</nav>
+
+<div class="modal" id="confirmModal" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
+  <div class="sheet" id="confirmSheet">
+    <div class="w98-title"><span id="cWinTitle">Confirm Grudge Entry</span><span class="w98-btns" style="display:flex"><span>×</span></span></div>
+    <div class="warn" id="cWarn">Warning</div>
+    <h2 id="cTitle">Confirm</h2>
+    <div class="summary" id="cSummary"></div>
+    <p class="oath" id="cOath"></p>
+    <button type="button" class="hold" id="holdBtn"><span class="fill"></span><span class="lbl" id="holdLbl">Hold to commit</span></button>
+    <button type="button" class="btn" id="cCancel">Withdraw</button>
+  </div>
+</div>
+
+<div class="modal" id="askModal" hidden role="dialog" aria-modal="true" aria-labelledby="aTitle">
+  <div class="sheet">
+    <div class="w98-title"><span>Grudge Ledger</span><span class="w98-btns" style="display:flex"><span>×</span></span></div>
+    <h2 id="aTitle">Are you sure?</h2>
+    <p class="oath" id="aBody"></p>
+    <div class="row"><button type="button" class="btn" id="aNo">Cancel</button><button type="button" class="btn primary" id="aYes">Yes</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const KEY = "grudge-ledger-v1";
+const HOUR = 3600e3;
+
+/* ---------- copy per skin ---------- */
+const SKINS = {
+  football: { name: "Nuclear Football", title: "GRUDGE COMMAND", sub: "Emergency satchel · eyes only",
+    peace: "Time to stand-down", open: "Active targets", file: "Authorize a grudge",
+    warn: "Launch authorization required", cTitle: "Confirm grudge launch",
+    oath: "Once launched, this grudge enters the permanent record. There is no recall code.",
+    hold: "Hold to arm and launch", cancel: "Abort", sealed: "Grudge launched." },
+  win98: { name: "Windows 98", title: "Grudge Ledger.exe", sub: "C:\\GRUDGES\\LEDGER.DAT",
+    peace: "Countdown to Peace", open: "Outstanding Grudges", file: "New Grudge Wizard",
+    warn: "⚠ This action cannot be undone", cTitle: "Are you sure you want to hold this grudge?",
+    oath: "Grudge Ledger will write this offense to the permanent record. Do not turn off your computer.",
+    hold: "Hold to Commit", cancel: "Cancel", sealed: "Grudge saved to LEDGER.DAT." },
+  blackbook: { name: "Little Black Book", title: "The Little Black Book", sub: "Of grudges, kept in ink",
+    peace: "Until peace returns", open: "Names in the book", file: "Inscribe a name",
+    warn: "What is written stays written", cTitle: "Inscribe this grudge?",
+    oath: "Ink does not forget. Their name goes in the book, and so does what they did.",
+    hold: "Hold to inscribe", cancel: "Close the book", sealed: "It is written." },
+  casefile: { name: "Case File", title: "Grudge Ledger", sub: "Department of Personal Grievances",
+    peace: "Time until case closed", open: "Open cases", file: "Sworn complaint",
+    warn: "Sworn statement", cTitle: "File formal charges?",
+    oath: "I swear, under penalty of perjury, that this account is true and that I will remember it.",
+    hold: "Hold to file charges", cancel: "Withdraw complaint", sealed: "Charges filed." }
+};
+
+const TIERS = [
+  { max: 20, name: "Minor slight", v: "--sev1" },
+  { max: 40, name: "Misdemeanor", v: "--sev2" },
+  { max: 60, name: "Felony", v: "--sev3" },
+  { max: 80, name: "High crime", v: "--sev4" },
+  { max: 100, name: "Unforgivable", v: "--sev5" }
+];
+const tierOf = v => TIERS.findIndex(t => v <= t.max);
+const STANDINGS = [
+  { min: 300, name: "Excommunicated", c: "st4" },
+  { min: 150, name: "Persona non grata", c: "st3" },
+  { min: 50, name: "Under review", c: "st2" },
+  { min: 1, name: "On notice", c: "st1" },
+  { min: 0, name: "In good standing", c: "st0" }
+];
+const standingOf = s => STANDINGS.find(x => s >= x.min);
+const STAT_PRESETS = [
+  { l: "24 hours", n: 24, u: "h" }, { l: "7 days", n: 7, u: "d" }, { l: "30 days", n: 30, u: "d" },
+  { l: "6 months", n: 6, u: "m" }, { l: "1 year", n: 1, u: "y" }, { l: "7 years", n: 7, u: "y" }, { l: "Eternal", n: 0, u: "eternal" }
+];
+const UNIT = { h: "hour", d: "day", w: "week", m: "month", y: "year" };
+
+/* ---------- state & storage ---------- */
+const blank = () => ({ v: 1, profiles: [], grudges: [], settings: { skin: "football", sound: true, haptics: true }, updatedAt: 0 });
+function normalize(s) {
+  const b = blank();
+  if (!s || typeof s !== "object") return b;
+  return { v: 1, profiles: Array.isArray(s.profiles) ? s.profiles : [], grudges: Array.isArray(s.grudges) ? s.grudges : [],
+    settings: Object.assign(b.settings, s.settings || {}), updatedAt: +s.updatedAt || 0 };
+}
+function loadLocal() { try { return normalize(JSON.parse(localStorage.getItem(KEY))); } catch (e) { return blank(); } }
+let state = loadLocal();
+let docRef = null, writing = false, dirty = false, pushTimer = 0;
+
+function save() {
+  state.updatedAt = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  clearTimeout(pushTimer); pushTimer = setTimeout(pushRemote, 500);
+}
+async function pushRemote() {
+  if (!docRef) return;
+  if (writing) { dirty = true; return; }
+  writing = true;
+  try { await docRef.set(JSON.parse(JSON.stringify(state))); setSync("cloud"); }
+  catch (e) { setSync("err", e && e.code); }
+  writing = false;
+  if (dirty) { dirty = false; pushRemote(); }
+}
+async function pullRemote() {
+  if (!docRef) return;
+  try {
+    const snap = await docRef.get();
+    if (snap.exists) {
+      const remote = normalize(JSON.parse(JSON.stringify(snap.data())));
+      if (remote.updatedAt > state.updatedAt) {
+        state = remote; try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+        renderAll();
+      } else if (state.updatedAt > remote.updatedAt) pushRemote();
+    } else if (state.updatedAt) pushRemote();
+    setSync("cloud");
+  } catch (e) { setSync("err", e && e.code); }
+}
+async function initCloud() {
+  try {
+    if (!window.claude || !window.claude.use) return;
+    const db = await window.claude.use("db");
+    const user = await window.claude.use("user");
+    if (!db || !user) return;
+    const id = await user.id();
+    if (!id) return;
+    docRef = db.collection("data/users/" + id).doc("ledger");
+    await pullRemote();
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pullRemote(); });
+  } catch (e) { setSync("err"); }
+}
+function setSync(mode, code) {
+  const el = $("#sync");
+  el.className = "sync" + (mode === "cloud" ? " cloud" : mode === "err" ? " err" : "");
+  el.querySelector("span").textContent = mode === "cloud" ? "Saved to account" : mode === "err" ? "Sync paused" : "This device";
+  $("#storeNote").textContent = mode === "cloud"
+    ? "Your ledger is saved privately to your Claude account, so it follows you to any device where you open this page. Only you can see it. A copy is also kept on this device."
+    : mode === "err" ? "Couldn't reach your account just now" + (code === "quota_exceeded" ? " (storage is full)" : "") + ". Everything is still saved on this device and will sync when the connection returns."
+    : (window.claude ? "Your ledger is saved on this device. Sign in to Claude to keep it in your account too. Copy a backup now and then to be safe."
+      : "Your ledger is saved in this browser on this device only (nothing is sent anywhere). Copy a backup now and then, and use it to move your ledger to another device.");
+}
+
+/* ---------- helpers ---------- */
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const MON = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+const p2 = n => String(n).padStart(2, "0");
+function fmtHour2(ts) { const d = new Date(ts); return `${p2(d.getDate())} ${MON[d.getMonth()]} ${d.getFullYear()}<br>${p2(d.getHours())}00 HRS`; }
+function fmtHour(ts) { const d = new Date(ts); return `${p2(d.getDate())} ${MON[d.getMonth()]} ${d.getFullYear()} · ${p2(d.getHours())}00 HRS`; }
+function floorHour(ts) { const d = new Date(ts); d.setMinutes(0, 0, 0); return d.getTime(); }
+function toLocalInput(ts) { const d = new Date(ts); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:00`; }
+function addStatute(ts, n, u) {
+  if (u === "eternal") return null;
+  const d = new Date(ts);
+  if (u === "h") return ts + n * HOUR;
+  if (u === "d") d.setDate(d.getDate() + n);
+  else if (u === "w") d.setDate(d.getDate() + 7 * n);
+  else if (u === "m") d.setMonth(d.getMonth() + n);
+  else if (u === "y") d.setFullYear(d.getFullYear() + n);
+  return d.getTime();
+}
+const statText = (n, u) => u === "eternal" ? "Eternal" : `${n} ${UNIT[u]}${n == 1 ? "" : "s"}`;
+function fmtLeft(ms) {
+  if (ms <= 0) return "00d 00:00:00";
+  const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+  const y = Math.floor(d / 365), dd = d % 365;
+  return (y ? `${y}y ` : "") + `${p2(y ? dd : d)}d ${p2(h)}:${p2(m)}:${p2(sec)}`;
+}
+const sevVar = v => `var(${TIERS[tierOf(v)].v})`;
+const person = id => state.profiles.find(p => p.id === id);
+const scoreOf = pid => state.grudges.filter(g => g.profileId === pid && g.status === "open").reduce((a, g) => a + g.severity, 0);
+function recordStanding(pid, note, at = Date.now()) {
+  const p = person(pid); if (!p) return;
+  const score = scoreOf(pid);
+  (p.history = p.history || []).push({ at, score, label: standingOf(score).name, note });
+}
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 2600);
+}
+
+/* ---------- audio (Web Audio API) ---------- */
+let ac = null, noiseBuf = null;
+function audio() {
+  if (!state.settings.sound) return null;
+  try {
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === "suspended") ac.resume();
+    if (!noiseBuf) {
+      noiseBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.4), ac.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    return ac;
+  } catch (e) { return null; }
+}
+function env(c, t, peak, dur) { const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); return g; }
+let lastClick = 0;
+function click(v) {
+  const c = audio(); if (!c) return;
+  const t = c.currentTime; if (t - lastClick < 0.012) return; lastClick = t;
+  try {
+    const n = c.createBufferSource(); n.buffer = noiseBuf;
+    const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2600 + v * 22; bp.Q.value = 5;
+    n.connect(bp).connect(env(c, t, 0.9, 0.022)).connect(c.destination); n.start(t, Math.random() * 0.3); n.stop(t + 0.03);
+    const o = c.createOscillator(); o.type = "triangle"; o.frequency.setValueAtTime(1100 + v * 6, t); o.frequency.exponentialRampToValueAtTime(320, t + 0.018);
+    o.connect(env(c, t, 0.22, 0.03)).connect(c.destination); o.start(t); o.stop(t + 0.04);
+  } catch (e) {}
+}
+function thunk(t0 = 0, deep = 1) {
+  const c = audio(); if (!c) return;
+  const t = c.currentTime + t0;
+  try {
+    const o = c.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(150 * deep, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.22);
+    o.connect(env(c, t, 0.9, 0.3)).connect(c.destination); o.start(t); o.stop(t + 0.32);
+    const n = c.createBufferSource(); n.buffer = noiseBuf;
+    const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 900;
+    n.connect(lp).connect(env(c, t, 0.6, 0.12)).connect(c.destination); n.start(t); n.stop(t + 0.14);
+  } catch (e) {}
+}
+function seal() { thunk(0, 1.1); thunk(0.2, .9); thunk(0.55, .7); }
+let holdOsc = null;
+function holdToneStart() {
+  const c = audio(); if (!c) return;
+  try {
+    const o = c.createOscillator(), g = c.createGain(); o.type = "sawtooth"; o.frequency.value = 55;
+    const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 400;
+    g.gain.value = 0.0001; g.gain.exponentialRampToValueAtTime(0.18, c.currentTime + 0.2);
+    o.connect(lp).connect(g).connect(c.destination); o.start();
+    holdOsc = { o, g, lp };
+  } catch (e) {}
+}
+function holdToneSet(p) { if (holdOsc && ac) { holdOsc.o.frequency.setTargetAtTime(55 + p * 110, ac.currentTime, 0.05); holdOsc.lp.frequency.setTargetAtTime(400 + p * 1800, ac.currentTime, 0.05); } }
+function holdToneStop() {
+  if (!holdOsc || !ac) return;
+  const { o, g } = holdOsc; holdOsc = null;
+  try { g.gain.cancelScheduledValues(ac.currentTime); g.gain.setTargetAtTime(0.0001, ac.currentTime, 0.03); o.stop(ac.currentTime + 0.2); } catch (e) {}
+}
+
+/* ---------- haptics (navigator.vibrate; unsupported on iOS) ---------- */
+const canVibrate = typeof navigator.vibrate === "function";
+function buzz(pattern) { if (!state.settings.haptics || !canVibrate) return false; try { return navigator.vibrate(pattern); } catch (e) { return false; } }
+const LOCK_BUZZ = [[25], [45], [60, 40, 60], [90, 40, 90, 40, 90], [200, 60, 200, 60, 400]];
+
+/* ---------- gauge ---------- */
+function buildGauge() {
+  const cx = 110, cy = 112, R = 100, r = 70;
+  const pt = (rad, deg) => { const a = (180 - deg) * Math.PI / 180; return [cx + rad * Math.cos(a), cy - rad * Math.sin(a)]; };
+  let s = "";
+  TIERS.forEach((t, i) => {
+    const a0 = i * 36 + 1, a1 = (i + 1) * 36 - 1;
+    const [x0, y0] = pt(R, a0), [x1, y1] = pt(R, a1), [x2, y2] = pt(r, a1), [x3, y3] = pt(r, a0);
+    s += `<path d="M${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1} L${x2} ${y2} A${r} ${r} 0 0 0 ${x3} ${y3}Z" fill="var(${t.v})"/>`;
+  });
+  for (let v = 0; v <= 100; v += 5) {
+    const major = v % 25 === 0, [x0, y0] = pt(r - 3, v * 1.8), [x1, y1] = pt(r - (major ? 12 : 7), v * 1.8);
+    s += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(--gauge-ink)" stroke-width="${major ? 2 : 1}"/>`;
+    if (major) { const [tx, ty] = pt(r - 22, v * 1.8); s += `<text x="${tx}" y="${ty + 3}" text-anchor="middle" font-size="9" fill="var(--gauge-ink)" font-family="var(--font-num)">${v}</text>`; }
+  }
+  s += `<g id="needle"><path d="M${cx - 4} ${cy} L${cx} ${cy - 92} L${cx + 4} ${cy}Z" fill="var(--needle)"/><circle cx="${cx}" cy="${cy}" r="9" fill="var(--hub)"/><circle cx="${cx}" cy="${cy}" r="3" fill="var(--gauge-face)"/></g>`;
+  $("#gaugeSvg").innerHTML = s;
+  let t = "";
+  for (let i = 0; i <= 20; i++) t += `<span class="${i % 5 === 0 ? "major" : ""}" style="transform:rotate(${-135 + i * 13.5}deg)"></span>`;
+  $("#knobTicks").innerHTML = t;
+}
+
+/* ---------- severity knob ---------- */
+let sev = 50, lockedSev = null;
+function setSev(v, silent) {
+  v = Math.max(1, Math.min(100, Math.round(v)));
+  if (v === sev && !silent) return;
+  const prev = sev; sev = v;
+  $("#knobCap").style.transform = `rotate(${-135 + (v - 1) / 99 * 270}deg)`;
+  $("#needle").style.transform = `rotate(${-90 + v * 1.8}deg)`;
+  $("#sevNum").textContent = v;
+  $("#sevTier").textContent = TIERS[tierOf(v)].name;
+  $("#sevTier").style.color = sevVar(v);
+  const k = $("#knob"); k.setAttribute("aria-valuenow", v); k.setAttribute("aria-valuetext", `${v}, ${TIERS[tierOf(v)].name}`);
+  if (!silent && prev !== v) click(v);
+}
+function lockSev() {
+  if (lockedSev === sev) return;
+  lockedSev = sev;
+  thunk(0, 0.8 + sev / 200);
+  buzz(LOCK_BUZZ[tierOf(sev)]);
+  const g = $("#gauge"); g.classList.remove("locked"); void g.offsetWidth; g.classList.add("locked");
+}
+function initKnob() {
+  const k = $("#knob");
+  let drag = null;
+  k.addEventListener("pointerdown", e => {
+    audio(); k.setPointerCapture(e.pointerId); k.classList.add("dragging");
+    drag = { x: e.clientX, y: e.clientY, v: sev }; e.preventDefault();
+  });
+  k.addEventListener("pointermove", e => {
+    if (!drag) return;
+    setSev(drag.v + ((drag.y - e.clientY) + (e.clientX - drag.x)) / 2.4);
+  });
+  const end = () => { if (!drag) return; drag = null; k.classList.remove("dragging"); lockSev(); };
+  k.addEventListener("pointerup", end); k.addEventListener("pointercancel", end);
+  let acc = 0, wt = 0;
+  k.addEventListener("wheel", e => {
+    e.preventDefault(); audio();
+    acc += e.deltaY; const steps = Math.trunc(acc / 16);
+    if (steps) { acc -= steps * 16; setSev(sev - steps); }
+    clearTimeout(wt); wt = setTimeout(lockSev, 380);
+  }, { passive: false });
+  let kt = 0;
+  k.addEventListener("keydown", e => {
+    const map = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 10, PageDown: -10 };
+    if (e.key in map) setSev(sev + map[e.key]);
+    else if (e.key === "Home") setSev(1); else if (e.key === "End") setSev(100); else return;
+    e.preventDefault(); clearTimeout(kt); kt = setTimeout(lockSev, 450);
+  });
+  let bt = 0;
+  const step = d => () => { setSev(sev + d); clearTimeout(bt); bt = setTimeout(lockSev, 450); };
+  $("#kMinus").addEventListener("click", step(-1));
+  $("#kPlus").addEventListener("click", step(1));
+}
+
+/* ---------- tabs ---------- */
+let tab = "ledger";
+function showTab(name) {
+  tab = name;
+  $$(".tab").forEach(b => { if (b.dataset.tab === name) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+  ["ledger", "file", "people", "settings"].forEach(v => { $("#view-" + v).hidden = v !== name; });
+  if (name === "file") prepFileForm();
+  window.scrollTo(0, 0);
+}
+
+/* ---------- ledger ---------- */
+function grudgeCard(g) {
+  const p = person(g.profileId), open = g.status === "open";
+  const col = sevVar(g.severity);
+  const statusMap = { forgiven: "Forgiven", settled: "Settled", lapsed: "Statute lapsed" };
+  return `<article class="g-card ${open ? "" : "closed"}" data-id="${g.id}" style="--sev:${col}">
+    <div class="g-stripe"></div>
+    <div class="g-body">
+      <div class="g-top"><span class="g-who">${esc(p ? p.name : "Unknown")}</span><span class="g-sev">SEV ${g.severity} · ${TIERS[tierOf(g.severity)].name}</span></div>
+      <h3 class="g-charge">${esc(g.charge)}</h3>
+      ${g.details ? `<p class="g-details">${esc(g.details)}</p>` : ""}
+      <dl class="g-meta">
+        <div><dt>Offense</dt><dd>${fmtHour2(g.occurredAt)}</dd></div>
+        <div><dt>Logged</dt><dd>${fmtHour2(g.loggedAt)}</dd></div>
+        <div><dt>Statute</dt><dd>${statText(g.statN, g.statU)}</dd></div>
+        ${open ? "" : `<div><dt>Closed</dt><dd>${fmtHour2(g.resolvedAt)}</dd></div>`}
+      </dl>
+      ${open ? (g.expiresAt
+        ? `<div class="g-count"><span class="lbl">Statute expires in</span><span class="cd" data-exp="${g.expiresAt}">${fmtLeft(g.expiresAt - Date.now())}</span></div>
+           <div class="g-prog"><i data-start="${g.occurredAt}" data-exp="${g.expiresAt}"></i></div>`
+        : `<div class="g-count"><span class="lbl">Statute</span><span class="cd">Never expires</span></div>`)
+        : `<div><span class="stamp ${g.status}">${statusMap[g.status] || g.status}</span></div>`}
+      <div class="g-actions">
+        ${open ? `<button class="btn" data-act="forgive">Forgive</button><button class="btn" data-act="settle">Settled</button>` : ""}
+        <button class="btn danger" data-act="strike">Strike</button>
+      </div>
+    </div></article>`;
+}
+function renderLedger() {
+  const open = state.grudges.filter(g => g.status === "open").sort((a, b) => (a.expiresAt ?? Infinity) - (b.expiresAt ?? Infinity));
+  const closed = state.grudges.filter(g => g.status !== "open").sort((a, b) => b.resolvedAt - a.resolvedAt);
+  $("#openCount").textContent = open.length || "";
+  $("#closedCount").textContent = closed.length || "";
+  $("#openList").innerHTML = open.length ? open.map(grudgeCard).join("")
+    : `<p class="empty">No outstanding grudges. Either everyone is behaving or you haven't been paying attention. Use <b>File</b> to log the first one.</p>`;
+  $("#closedList").innerHTML = closed.length ? closed.map(grudgeCard).join("")
+    : `<p class="empty">Forgiven, settled and lapsed grudges are archived here.</p>`;
+  tickProgress(); renderPeace();
+}
+function renderPeace() {
+  const open = state.grudges.filter(g => g.status === "open");
+  const pc = $("#peaceCount");
+  if (!open.length) {
+    pc.textContent = "AT PEACE"; pc.classList.add("calm"); delete pc.dataset.exp;
+    $("#peaceSub").textContent = state.grudges.length ? "Every grudge is closed. Enjoy it while it lasts." : "Nothing on file yet.";
+    $("#peaceBlocker").textContent = ""; return;
+  }
+  pc.classList.remove("calm");
+  const total = open.reduce((a, g) => a + g.severity, 0);
+  const eternal = open.filter(g => !g.expiresAt);
+  const last = open.filter(g => g.expiresAt).sort((a, b) => b.expiresAt - a.expiresAt)[0];
+  const n = open.length;
+  if (eternal.length) {
+    pc.textContent = "NEVER"; delete pc.dataset.exp;
+    $("#peaceSub").textContent = `${n} outstanding grudge${n > 1 ? "s" : ""} · combined severity ${total}. ${eternal.length} of them never expire${eternal.length > 1 ? "" : "s"}.`;
+    $("#peaceBlocker").textContent = `Blocking peace: "${eternal[0].charge}" (${(person(eternal[0].profileId) || {}).name || "Unknown"})` + (eternal.length > 1 ? ` and ${eternal.length - 1} more` : "");
+  } else {
+    pc.dataset.exp = last.expiresAt; pc.textContent = fmtLeft(last.expiresAt - Date.now());
+    $("#peaceSub").textContent = `${n} outstanding grudge${n > 1 ? "s" : ""} · combined severity ${total} · peace on ${fmtHour(last.expiresAt)}`;
+    $("#peaceBlocker").textContent = `Last to expire: "${last.charge}" (${(person(last.profileId) || {}).name || "Unknown"})`;
+  }
+}
+function tickProgress() {
+  const now = Date.now();
+  $$(".cd[data-exp]").forEach(el => { el.textContent = fmtLeft(+el.dataset.exp - now); });
+  $$(".g-prog i").forEach(el => { const s = +el.dataset.start, e = +el.dataset.exp; el.style.width = Math.min(100, Math.max(0, (now - s) / (e - s) * 100)) + "%"; });
+  const pc = $("#peaceCount"); if (pc.dataset.exp) pc.textContent = fmtLeft(+pc.dataset.exp - now);
+}
+function checkLapses() {
+  const now = Date.now(); let changed = [];
+  state.grudges.forEach(g => {
+    if (g.status === "open" && g.expiresAt && g.expiresAt <= now) {
+      g.status = "lapsed"; g.resolvedAt = g.expiresAt;
+      recordStanding(g.profileId, `Statute lapsed: "${g.charge}"`, g.expiresAt);
+      changed.push(g);
+    }
+  });
+  if (changed.length) { save(); renderAll(); toast(changed.length === 1 ? `Statute lapsed: "${changed[0].charge}"` : `${changed.length} statutes lapsed`); }
+}
+
+async function onCardAction(e) {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const card = b.closest(".g-card"); const g = state.grudges.find(x => x.id === card.dataset.id); if (!g) return;
+  const who = (person(g.profileId) || {}).name || "them";
+  const act = b.dataset.act;
+  if (act === "forgive") {
+    if (!await ask(`Forgive ${who}?`, `"${g.charge}" will be closed as forgiven and their standing will improve.`, "Forgive")) return;
+    g.status = "forgiven"; g.resolvedAt = Date.now(); recordStanding(g.profileId, `Forgiven: "${g.charge}"`); toast("Forgiven. How generous.");
+  } else if (act === "settle") {
+    if (!await ask("Mark as settled?", `"${g.charge}" will be closed as settled.`, "Settled")) return;
+    g.status = "settled"; g.resolvedAt = Date.now(); recordStanding(g.profileId, `Settled: "${g.charge}"`); toast("Case settled.");
+  } else if (act === "strike") {
+    if (!await ask("Strike from the record?", `"${g.charge}" will be deleted completely. This can't be undone.`, "Strike it", true)) return;
+    const wasOpen = g.status === "open";
+    state.grudges = state.grudges.filter(x => x !== g);
+    if (wasOpen) recordStanding(g.profileId, `Struck from record: "${g.charge}"`);
+    toast("Struck from the record.");
+  }
+  save(); renderAll();
+}
+
+/* ---------- file form ---------- */
+let statU = "d", statN = 30;
+function prepFileForm() {
+  const sel = $("#fWho"), cur = sel.value;
+  const opts = state.profiles.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  sel.innerHTML = opts + `<option value="__new">+ New person…</option>`;
+  if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+  else sel.value = state.profiles.length ? sel.options[0].value : "__new";
+  $("#newWhoRow").hidden = sel.value !== "__new";
+  if (!$("#fWhen").value) $("#fWhen").value = toLocalInput(Date.now());
+  $("#fWhen").max = toLocalInput(Date.now());
+  updateStatPreview();
+}
+function renderChips() {
+  $("#statChips").innerHTML = STAT_PRESETS.map((p, i) =>
+    `<button type="button" class="chip" data-i="${i}" aria-pressed="${p.u === statU && (p.u === "eternal" || p.n === statN)}">${p.l}</button>`).join("");
+}
+function readStat() {
+  statU = $("#fStatU").value;
+  statN = Math.max(1, Math.min(999, parseInt($("#fStatN").value, 10) || 1));
+  $("#fStatN").disabled = statU === "eternal";
+}
+function updateStatPreview() {
+  readStat(); renderChips();
+  const occ = whenValue();
+  if (statU === "eternal") { $("#statPreview").textContent = "This grudge will never expire on its own."; return; }
+  if (occ == null) { $("#statPreview").textContent = ""; return; }
+  const exp = addStatute(occ, statN, statU);
+  $("#statPreview").textContent = exp <= Date.now()
+    ? `This statute already ran out on ${fmtHour(exp)}. Choose a longer one.`
+    : `The clock starts at the hour of the offense. Expires ${fmtHour(exp)}.`;
+}
+function whenValue() { const v = $("#fWhen").value; if (!v) return null; const t = new Date(v).getTime(); return isNaN(t) ? null : floorHour(t); }
+
+let pending = null;
+function onFile() {
+  const err = $("#fileErr"); err.textContent = "";
+  const who = $("#fWho").value;
+  const newName = $("#fNewName").value.trim();
+  const charge = $("#fCharge").value.trim();
+  const occ = whenValue();
+  readStat();
+  if (who === "__new" && !newName) return err.textContent = "Name the accused.";
+  if (!charge) return err.textContent = "State the charge.";
+  if (occ == null) return err.textContent = "Set the hour of the offense.";
+  if (occ > Date.now()) return err.textContent = "That hour hasn't happened yet. Grudges are for things already done.";
+  const exp = addStatute(occ, statN, statU);
+  if (exp != null && exp <= Date.now()) return err.textContent = "The statute of limitations has already run out for that hour. Choose a longer one.";
+  pending = { who, newName, newRel: $("#fNewRel").value.trim(), charge, details: $("#fDetails").value.trim(), occ, exp, severity: sev, statN: statU === "eternal" ? 0 : statN, statU };
+  openConfirm();
+}
+
+/* ---------- confirm ritual ---------- */
+function openConfirm() {
+  const S = SKINS[state.settings.skin] || SKINS.football;
+  const name = pending.who === "__new" ? pending.newName : (person(pending.who) || {}).name;
+  $("#cWarn").textContent = S.warn;
+  $("#cTitle").textContent = S.cTitle;
+  $("#cOath").textContent = S.oath;
+  $("#holdLbl").textContent = S.hold;
+  $("#cCancel").textContent = S.cancel;
+  $("#cSummary").innerHTML = `
+    <span class="lbl-sm">The accused</span><b>${esc(name)}</b>
+    <span class="lbl-sm">The charge</span><b>${esc(pending.charge)}</b>
+    <span>Severity <b style="color:${sevVar(pending.severity)}">${pending.severity}</b> · ${TIERS[tierOf(pending.severity)].name}</span>
+    <span>Offense: ${fmtHour(pending.occ)}</span>
+    <span>Statute: ${statText(pending.statN, pending.statU)}${pending.exp ? ` · expires ${fmtHour(pending.exp)}` : ""}</span>`;
+  const m = $("#confirmModal"); m.classList.remove("sealed"); m.hidden = false;
+  thunk(0, 0.6); buzz([40]);
+  $("#holdBtn").focus();
+}
+function closeConfirm() { $("#confirmModal").hidden = true; resetHold(); }
+const HOLD_MS = 1800;
+let holdStart = 0, holdRaf = 0, holdBuzzed = 0;
+function startHold(e) {
+  if (e) e.preventDefault();
+  if (holdStart) return;
+  audio(); holdStart = performance.now(); holdBuzzed = 0;
+  $("#holdBtn").classList.add("active"); $("#confirmSheet").classList.add("shake");
+  holdToneStart();
+  const step = now => {
+    const p = Math.min(1, (now - holdStart) / HOLD_MS);
+    $("#holdBtn").style.setProperty("--p", p);
+    $("#confirmSheet").style.setProperty("--amp", (p * 3).toFixed(2) + "px");
+    holdToneSet(p);
+    const mark = Math.floor(p * 3); if (mark > holdBuzzed && p < 1) { holdBuzzed = mark; buzz([20 + mark * 15]); click(40 + mark * 20); }
+    if (p >= 1) { commitGrudge(); return; }
+    holdRaf = requestAnimationFrame(step);
+  };
+  holdRaf = requestAnimationFrame(step);
+}
+function resetHold() {
+  cancelAnimationFrame(holdRaf); holdStart = 0; holdToneStop();
+  $("#holdBtn").classList.remove("active"); $("#holdBtn").style.setProperty("--p", 0);
+  $("#confirmSheet").classList.remove("shake");
+}
+function cancelHold() { if (holdStart) resetHold(); }
+function commitGrudge() {
+  resetHold();
+  const now = Date.now();
+  let pid = pending.who;
+  if (pid === "__new") {
+    pid = uid();
+    state.profiles.push({ id: pid, name: pending.newName, relation: pending.newRel, notes: "", createdAt: now, history: [] });
+    recordStanding(pid, "Dossier opened", now);
+  }
+  const g = { id: uid(), profileId: pid, charge: pending.charge, details: pending.details, severity: pending.severity,
+    occurredAt: pending.occ, loggedAt: now, statN: pending.statN, statU: pending.statU, expiresAt: pending.exp, status: "open", resolvedAt: null };
+  state.grudges.push(g);
+  recordStanding(pid, `Charged: "${g.charge}" (severity ${g.severity})`, now);
+  save();
+  seal(); buzz([300, 80, 300, 80, 600]);
+  const S = SKINS[state.settings.skin] || SKINS.football;
+  const m = $("#confirmModal"); m.classList.add("sealed");
+  setTimeout(() => {
+    m.hidden = true; m.classList.remove("sealed");
+    $("#fCharge").value = ""; $("#fDetails").value = ""; $("#fNewName").value = ""; $("#fNewRel").value = "";
+    $("#fWhen").value = toLocalInput(Date.now());
+    $("#fWho").value = pid;
+    renderAll(); showTab("ledger"); toast(S.sealed);
+    const card = document.querySelector(`.g-card[data-id="${g.id}"]`);
+    if (card) { card.scrollIntoView({ block: "center" }); card.classList.add("flash"); }
+  }, 480);
+  pending = null;
+}
+
+/* ---------- generic ask dialog ---------- */
+let askResolve = null;
+function ask(title, body, yes = "Yes", danger = false) {
+  $("#aTitle").textContent = title; $("#aBody").textContent = body;
+  const y = $("#aYes"); y.textContent = yes; y.className = "btn " + (danger ? "danger" : "primary");
+  $("#askModal").hidden = false; y.focus();
+  return new Promise(r => { askResolve = r; });
+}
+function answer(v) { $("#askModal").hidden = true; if (askResolve) { askResolve(v); askResolve = null; } }
+
+/* ---------- dossiers ---------- */
+let openPerson = null;
+function renderPeople() {
+  $("#peopleCount").textContent = state.profiles.length || "";
+  const list = state.profiles.map(p => ({ p, s: scoreOf(p.id) })).sort((a, b) => b.s - a.s || a.p.name.localeCompare(b.p.name));
+  $("#peopleList").innerHTML = list.length ? list.map(({ p, s }) => {
+    const st = standingOf(s), n = state.grudges.filter(g => g.profileId === p.id && g.status === "open").length;
+    return `<button class="p-card" data-pid="${p.id}"><span class="avatar">${esc(initials(p.name))}</span>
+      <span style="min-width:0"><span class="p-name">${esc(p.name)}</span><br><span class="p-meta">${esc(p.relation || "No relation given")} · ${n} open · score ${s}</span></span>
+      <span class="badge ${st.c}">${st.name}</span></button>`;
+  }).join("") : `<p class="empty">No dossiers yet. Open one here, or create one while filing a grudge.</p>`;
+  if (openPerson && person(openPerson)) renderPersonDetail(openPerson);
+  else { openPerson = null; $("#personDetail").hidden = true; $("#peopleIndex").hidden = false; }
+}
+const initials = n => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "?";
+function spark(hist) {
+  if (!hist || hist.length < 2) return "";
+  const W = 300, H = 64, pad = 6;
+  const t0 = hist[0].at, t1 = Math.max(hist[hist.length - 1].at, t0 + 1), max = Math.max(50, ...hist.map(h => h.score));
+  const X = t => pad + (t - t0) / (t1 - t0) * (W - pad * 2), Y = s => H - pad - s / max * (H - pad * 2);
+  let d = `M${X(hist[0].at)} ${Y(hist[0].score)}`;
+  for (let i = 1; i < hist.length; i++) d += ` H${X(hist[i].at)} V${Y(hist[i].score)}`;
+  const last = hist[hist.length - 1];
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="Standing score over time">
+    <line x1="${pad}" x2="${W - pad}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line)" stroke-width="1"/>
+    <path d="${d} V${Y(0)} H${X(hist[0].at)}Z" fill="var(--accent)" opacity=".15"/>
+    <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <circle cx="${X(last.at)}" cy="${Y(last.score)}" r="4" fill="var(--accent)"/></svg>`;
+}
+function renderPersonDetail(pid) {
+  const p = person(pid); if (!p) return;
+  openPerson = pid;
+  const s = scoreOf(pid), st = standingOf(s);
+  const gs = state.grudges.filter(g => g.profileId === pid);
+  const open = gs.filter(g => g.status === "open"), closed = gs.filter(g => g.status !== "open");
+  const hist = (p.history || []).slice().sort((a, b) => a.at - b.at);
+  $("#personDetail").innerHTML = `
+    <div><button class="btn" id="backPeople">← All dossiers</button></div>
+    <div class="panel"><h2 class="ph">Dossier</h2><div class="pb">
+      <div class="d-head"><span class="avatar">${esc(initials(p.name))}</span>
+        <div style="min-width:0;flex:1"><div class="p-name" style="font-size:22px">${esc(p.name)}</div><div class="p-meta">${esc(p.relation || "No relation given")} · on file since ${fmtHour(p.createdAt)}</div></div></div>
+      <div><span class="lbl-sm">Current standing</span><div class="d-standing ${st.c}">${st.name}</div><div class="p-meta">Score ${s} from ${open.length} open grudge${open.length === 1 ? "" : "s"}</div></div>
+      ${spark(hist)}
+      <div class="field"><label for="dNotes">Notes</label><textarea id="dNotes">${esc(p.notes || "")}</textarea></div>
+      <div class="row"><button class="btn" id="saveNotes">Save notes</button><button class="btn primary" id="fileAgainst">File a grudge against ${esc(p.name.split(" ")[0])}</button></div>
+    </div></div>
+    <div class="panel"><h2 class="ph"><span>Open grudges</span><span class="count">${open.length || ""}</span></h2><div class="pb"><div class="list" data-cards>${open.map(grudgeCard).join("") || `<p class="empty">Nothing outstanding.</p>`}</div></div></div>
+    <div class="panel"><h2 class="ph">Standing history</h2><div class="pb"><ol class="hist">
+      ${hist.slice().reverse().map(h => `<li><span class="n">${fmtHour(h.at)}</span><span>${esc(h.note)}</span><span><span class="badge ${standingOf(h.score).c}">${esc(h.label)}</span> <span class="p-meta">score ${h.score}</span></span></li>`).join("")}
+    </ol></div></div>
+    <div class="panel"><h2 class="ph"><span>Past grudges</span><span class="count">${closed.length || ""}</span></h2><div class="pb"><div class="list" data-cards>${closed.map(grudgeCard).join("") || `<p class="empty">No closed cases.</p>`}</div></div></div>
+    <div><button class="btn danger" id="delPerson">Destroy this dossier</button></div>`;
+  $("#peopleIndex").hidden = true; $("#personDetail").hidden = false;
+  tickProgress();
+  $("#backPeople").onclick = () => { openPerson = null; renderPeople(); window.scrollTo(0, 0); };
+  $("#saveNotes").onclick = () => { p.notes = $("#dNotes").value; save(); toast("Notes saved."); };
+  $("#fileAgainst").onclick = () => { showTab("file"); $("#fWho").value = pid; $("#newWhoRow").hidden = true; };
+  $("#delPerson").onclick = async () => {
+    if (!await ask(`Destroy ${p.name}'s dossier?`, `This deletes ${p.name} and all ${gs.length} of their grudges. This can't be undone.`, "Destroy it", true)) return;
+    state.profiles = state.profiles.filter(x => x.id !== pid); state.grudges = state.grudges.filter(g => g.profileId !== pid);
+    openPerson = null; save(); renderAll(); toast("Dossier destroyed.");
+  };
+}
+
+/* ---------- settings ---------- */
+function renderSettings() {
+  $("#skinList").innerHTML = Object.entries(SKINS).map(([k, s]) => {
+    const pv = { football: "GRUDGE COMMAND", win98: "<b>Grudge Ledger.exe</b>", blackbook: "The Little Black Book", casefile: "CONFIDENTIAL" }[k];
+    return `<button class="skin-opt" data-skin="${k}" aria-pressed="${state.settings.skin === k}"><span class="pv pv-${k}">${pv}</span><span class="nm">${s.name}</span></button>`;
+  }).join("");
+  $("#sSound").checked = !!state.settings.sound;
+  $("#sHaptics").checked = !!state.settings.haptics;
+  if (!canVibrate) $("#buzzNote").textContent = "This browser doesn't support vibration (iPhones never allow it for web pages). You'll still get the sound and the visual lock.";
+}
+function applySkin() {
+  const k = SKINS[state.settings.skin] ? state.settings.skin : "football";
+  document.documentElement.dataset.skin = k;
+  const S = SKINS[k];
+  $("#appTitle").textContent = S.title; $("#appSub").textContent = S.sub;
+  $("#peaceTitle").textContent = S.peace; $("#openTitle").textContent = S.open; $("#fileTitle").textContent = S.file;
+  $("#cWinTitle").textContent = "Confirm Grudge Entry";
+}
+
+function renderAll() { applySkin(); renderLedger(); renderPeople(); renderSettings(); if (tab === "file") prepFileForm(); }
+
+/* ---------- wiring ---------- */
+function wire() {
+  $$(".tab").forEach(b => b.addEventListener("click", () => { audio(); showTab(b.dataset.tab); }));
+  $("#view-ledger").addEventListener("click", onCardAction);
+  $("#personDetail").addEventListener("click", e => { if (e.target.closest("[data-act]")) onCardAction(e); });
+  $("#peopleList").addEventListener("click", e => { const b = e.target.closest("[data-pid]"); if (b) { renderPersonDetail(b.dataset.pid); window.scrollTo(0, 0); } });
+  $("#fWho").addEventListener("change", () => { $("#newWhoRow").hidden = $("#fWho").value !== "__new"; });
+  $("#fWhen").addEventListener("change", updateStatPreview);
+  $("#fStatN").addEventListener("input", updateStatPreview);
+  $("#fStatU").addEventListener("change", updateStatPreview);
+  $("#statChips").addEventListener("click", e => {
+    const c = e.target.closest(".chip"); if (!c) return;
+    const p = STAT_PRESETS[+c.dataset.i]; $("#fStatU").value = p.u; if (p.n) $("#fStatN").value = p.n;
+    click(60); updateStatPreview();
+  });
+  $("#fileBtn").addEventListener("click", onFile);
+  $("#fileForm").addEventListener("submit", e => { e.preventDefault(); onFile(); });
+  const hb = $("#holdBtn");
+  hb.addEventListener("pointerdown", e => { hb.setPointerCapture(e.pointerId); startHold(e); });
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => hb.addEventListener(ev, cancelHold));
+  hb.addEventListener("keydown", e => { if ((e.key === " " || e.key === "Enter") && !e.repeat) startHold(e); });
+  hb.addEventListener("keyup", e => { if (e.key === " " || e.key === "Enter") cancelHold(); });
+  hb.addEventListener("contextmenu", e => e.preventDefault());
+  $("#cCancel").addEventListener("click", () => { closeConfirm(); toast("Withdrawn. For now."); });
+  $("#aYes").addEventListener("click", () => answer(true));
+  $("#aNo").addEventListener("click", () => answer(false));
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { if (!$("#askModal").hidden) answer(false); else if (!$("#confirmModal").hidden) closeConfirm(); } });
+
+  $("#personForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = $("#pName").value.trim(); if (!name) { $("#personErr").textContent = "A dossier needs a name."; return; }
+    $("#personErr").textContent = "";
+    const id = uid(), now = Date.now();
+    state.profiles.push({ id, name, relation: $("#pRel").value.trim(), notes: $("#pNotes").value.trim(), createdAt: now, history: [] });
+    recordStanding(id, "Dossier opened", now);
+    $("#pName").value = $("#pRel").value = $("#pNotes").value = ""; $("#addPerson").open = false;
+    save(); renderAll(); thunk(); toast(`Dossier opened on ${name}.`);
+  });
+
+  $("#skinList").addEventListener("click", e => {
+    const b = e.target.closest("[data-skin]"); if (!b) return;
+    state.settings.skin = b.dataset.skin; save(); renderAll(); click(70);
+  });
+  $("#sSound").addEventListener("change", e => { state.settings.sound = e.target.checked; save(); if (e.target.checked) click(50); });
+  $("#sHaptics").addEventListener("change", e => { state.settings.haptics = e.target.checked; save(); });
+  $("#testBuzz").addEventListener("click", () => {
+    const ok = buzz([200, 60, 200, 60, 400]);
+    toast(!state.settings.haptics ? "Vibration is switched off above." : ok ? "Bzzzt." : "This device didn't vibrate. iPhones don't allow it from web pages.");
+  });
+  $("#testClick").addEventListener("click", () => { if (!state.settings.sound) return toast("Sound is switched off above."); [0, 60, 120].forEach((d, i) => setTimeout(() => click(30 + i * 30), d)); setTimeout(() => thunk(), 260); });
+  $("#copyBackup").addEventListener("click", () => {
+    const txt = JSON.stringify(state), out = $("#backupOut");
+    const p = navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(txt) : Promise.reject();
+    p.then(() => toast("Backup copied. Paste it somewhere safe."), () => { out.hidden = false; out.value = txt; out.focus(); out.select(); toast("Select all and copy the text below."); });
+  });
+  $("#showRestore").addEventListener("click", () => { $("#restoreBox").hidden = !$("#restoreBox").hidden; });
+  $("#doRestore").addEventListener("click", async () => {
+    let data; try { data = JSON.parse($("#restoreText").value); } catch (e) { return toast("That isn't a valid backup."); }
+    if (!data || !Array.isArray(data.grudges) || !Array.isArray(data.profiles)) return toast("That isn't a Grudge Ledger backup.");
+    if (!await ask("Replace your ledger?", `This replaces everything with the backup (${data.profiles.length} dossiers, ${data.grudges.length} grudges).`, "Replace", true)) return;
+    state = normalize(data); save(); $("#restoreText").value = ""; $("#restoreBox").hidden = true; renderAll(); toast("Ledger restored.");
+  });
+  $("#burn").addEventListener("click", async () => {
+    if (!await ask("Burn the ledger?", "Every dossier and every grudge will be erased. Your skin and sound settings stay. This can't be undone.", "Burn it", true)) return;
+    const s = state.settings; state = blank(); state.settings = s; save(); renderAll(); thunk(0, .5); toast("The ledger is ash.");
+  });
+}
+
+/* ---------- boot ---------- */
+buildGauge();
+initKnob();
+wire();
+setSev(50, true);
+lockedSev = 50;
+setSync("local");
+renderAll();
+checkLapses();
+setInterval(() => { tickProgress(); checkLapses(); }, 1000);
+initCloud();
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>
