@@ -34,6 +34,12 @@
 - When a statute expires, the grudge closes itself as **Statute lapsed** (also caught up when you next open the app).
 Every action asks for confirmation first.
 
+## Dossier photos
+- **Add one:** Dossiers → open a person → **Add photo** (or **Change photo**). On a phone you can take a picture or pick one from your library. When opening a new dossier there's also an optional Photo field.
+- **Remove it:** open the dossier → **Remove photo**.
+- The picture is cropped to a square and shrunk to 192×192 (about 5–15 KB) on your device before saving, so it never uploads a full-size photo. It shows on the dossier, in the dossier list and next to the name on each grudge, restyled by skin (rotated paper print in Case File, sepia in the Little Black Book, grey-green in Nuclear Football, square in Windows 98).
+- Photos are part of the ledger, so they sync between devices and are included in server backups and Copy backup. The newest edit to a dossier wins if two devices change it at once.
+
 ## Standing (per person)
 Standing = total severity of that person's open grudges:
 
@@ -91,4 +97,4 @@ Nothing is installed on your phone. The server edition is one small container; t
 
 **Server settings** (environment variables): `PORT` (host port in compose, default 8080), `SYNC_TOKEN`, `BACKUP_MIN_INTERVAL_MIN` (default 10), `BACKUP_KEEP` (default 500), `CORS_ORIGIN` (sites allowed to sync from elsewhere, e.g. your github.io address).
 
-**Data model** (what the backup text contains): `profiles[]` (id, name, relation, notes, createdAt, updatedAt, history[] of {at, score, label, note}), `grudges[]` (id, profileId, charge, details, severity 1–100, occurredAt, loggedAt, statN, statU h/d/w/m/y/eternal, expiresAt or null, status open/forgiven/settled/lapsed, resolvedAt), `deleted[]` (ids removed, so sync doesn't bring them back), `epoch` (bumped by Restore/Burn), `settings` (skin, sound, haptics), `updatedAt`.
+**Data model** (what the backup text contains): `profiles[]` (id, name, relation, notes, photo (small JPEG as a data URL, optional), createdAt, updatedAt, history[] of {at, score, label, note}), `grudges[]` (id, profileId, charge, details, severity 1–100, occurredAt, loggedAt, statN, statU h/d/w/m/y/eternal, expiresAt or null, status open/forgiven/settled/lapsed, resolvedAt), `deleted[]` (ids removed, so sync doesn't bring them back), `epoch` (bumped by Restore/Burn), `settings` (skin, sound, haptics), `updatedAt`.

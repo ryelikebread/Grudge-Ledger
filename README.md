@@ -60,6 +60,10 @@ Your data is in a volume, so it survives rebuilds. If you changed files in `publ
 - **Restore from backup** and **Burn the ledger** are deliberate "replace everything" actions; they win over other devices' older copies. Anything another device entered offline *before* the restore is discarded.
 - Sound, vibration and skin choices are per device and are not synced.
 
+## Dossier photos
+
+Each dossier can have a photo. It is cropped and compressed to a 192×192 JPEG in the browser and stored inside the ledger (so it syncs and is backed up with everything else). Around 100 photos adds roughly 1 MB, well within browser storage and the server's 5 MB upload limit.
+
 ## Backups
 
 - The server writes `backups/ledger-YYYYMMDD-HHMMSS.json` (UTC) after changes, at most one every 10 minutes (`BACKUP_MIN_INTERVAL_MIN`), plus one when it shuts down with unsaved changes. It keeps the newest 500 (`BACKUP_KEEP`) and the newest one from each of the last 90 days.

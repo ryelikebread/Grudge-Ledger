@@ -49,3 +49,11 @@ test("settings and timestamps don't count as content", () => {
   const a = S({ settings: { skin: "win98" }, updatedAt: 9 }), b = S({ settings: { skin: "football" }, updatedAt: 1 });
   assert.equal(canon(a), canon(b));
 });
+
+test("a newer profile edit (photo set or removed) wins", () => {
+  const old = S({ profiles: [P("a", { updatedAt: 1 })] });
+  const withPhoto = S({ profiles: [P("a", { updatedAt: 5, photo: "data:image/jpeg;base64,AAAA" })] });
+  assert.equal(merge(old, withPhoto).profiles[0].photo, "data:image/jpeg;base64,AAAA");
+  const removed = S({ profiles: [P("a", { updatedAt: 9 })] });
+  assert.equal(merge(withPhoto, removed).profiles[0].photo, undefined);
+});

@@ -1,5 +1,5 @@
 // Offline cache. Bump VERSION whenever any file in public/ changes.
-const VERSION = "grudge-ledger-v2";
+const VERSION = "grudge-ledger-v3";
 const FILES = ["./", "index.html", "merge.js", "manifest.webmanifest", "fonts/fonts.css", "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png",
   "fonts/BlackOpsOne-normal-400.woff2", "fonts/BodoniModa-italic-500.woff2", "fonts/BodoniModa-normal-500.woff2", "fonts/BodoniModa-normal-700.woff2",
   "fonts/Caveat-normal-500.woff2", "fonts/Caveat-normal-700.woff2", "fonts/CormorantGaramond-normal-500.woff2", "fonts/CormorantGaramond-normal-600.woff2",

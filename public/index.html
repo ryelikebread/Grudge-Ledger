@@ -267,6 +267,14 @@ button{cursor:pointer}
 .avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-family:var(--font-display);font-size:17px;background:var(--accent);color:var(--surface2)}
 :root[data-skin="win98"] .avatar{border-radius:0}
 :root[data-skin="football"] .avatar{color:#111}
+.avatar.photo{display:block;object-fit:cover;background:#000;padding:0}
+.avatar.sm{width:26px;height:26px;font-size:11px;flex:none}
+.avatar.big{width:84px;height:84px;font-size:30px;flex:none}
+.g-who{display:inline-flex;align-items:center;gap:8px;min-width:0}
+:root[data-skin="football"] .avatar.photo{filter:grayscale(.75) contrast(1.15) sepia(.25);border:2px solid var(--line)}
+:root[data-skin="win98"] .avatar.photo{border-radius:0;outline:2px solid #808080;outline-offset:-2px}
+:root[data-skin="blackbook"] .avatar.photo{filter:sepia(.45) contrast(1.05);border:2px solid #b8892f}
+:root[data-skin="casefile"] .avatar.photo{border:3px solid #fffdf5;border-radius:2px;box-shadow:0 2px 4px rgba(0,0,0,.35);transform:rotate(-3deg)}
 .p-name{font-weight:700;font-size:16px;overflow-wrap:anywhere}
 .p-meta{font-size:12px;color:var(--muted)}
 .badge{font-size:11px;letter-spacing:.1em;text-transform:uppercase;border:1px solid currentColor;padding:2px 7px;border-radius:999px;white-space:nowrap}
@@ -470,6 +478,7 @@ details.add>summary::-webkit-details-marker{display:none}
                 <div class="field"><label for="pName">Name</label><input id="pName" autocomplete="off" required></div>
                 <div class="field"><label for="pRel">Relation to you</label><input id="pRel" autocomplete="off"></div>
               </div>
+              <div class="field"><label for="pPhoto">Photo (optional)</label><input id="pPhoto" type="file" accept="image/*"></div>
               <div class="field"><label for="pNotes">Known associates, aliases, notes</label><textarea id="pNotes"></textarea></div>
               <p class="err" id="personErr" role="alert"></p>
               <button class="btn primary" type="submit">Open dossier</button>
@@ -648,7 +657,7 @@ let docRef = null, writing = false, dirty = false, pushTimer = 0;
 
 function save() {
   state.updatedAt = Date.now();
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { toast("Couldn't save on this device: browser storage is full."); }
   clearTimeout(pushTimer); pushTimer = setTimeout(pushRemote, 500);
   scheduleSync();
 }
@@ -1017,7 +1026,7 @@ function grudgeCard(g) {
   return `<article class="g-card ${open ? "" : "closed"}" data-id="${g.id}" style="--sev:${col}">
     <div class="g-stripe"></div>
     <div class="g-body">
-      <div class="g-top"><span class="g-who">${esc(p ? p.name : "Unknown")}</span><span class="g-sev">SEV ${g.severity} · ${TIERS[tierOf(g.severity)].name}</span></div>
+      <div class="g-top"><span class="g-who">${avatarHTML(p, "sm")}${esc(p ? p.name : "Unknown")}</span><span class="g-sev">SEV ${g.severity} · ${TIERS[tierOf(g.severity)].name}</span></div>
       <h3 class="g-charge">${esc(g.charge)}</h3>
       ${g.details ? `<p class="g-details">${esc(g.details)}</p>` : ""}
       <dl class="g-meta">
@@ -1247,13 +1256,30 @@ function ask(title, body, yes = "Yes", danger = false) {
 function answer(v) { $("#askModal").hidden = true; if (askResolve) { askResolve(v); askResolve = null; } }
 
 /* ---------- dossiers ---------- */
+function avatarHTML(p, cls = "") {
+  const ok = p && typeof p.photo === "string" && p.photo.length < 200000 && p.photo.startsWith("data:image/jpeg;base64,") && /^[A-Za-z0-9+/=]+$/.test(p.photo.slice(23));
+  const sz = cls === "sm" ? 26 : cls === "big" ? 84 : 44;
+  return ok ? `<img class="avatar photo ${cls}" src="${p.photo}" alt="" width="${sz}" height="${sz}">` : `<span class="avatar ${cls}">${esc(initials(p ? p.name : "?"))}</span>`;
+}
+/* Resize a chosen picture to a 192px square JPEG (centre-cropped) so it stays small in the ledger. */
+async function photoFromFile(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("decode")); i.src = url; });
+    const S = 192, c = document.createElement("canvas"); c.width = c.height = S;
+    const ctx = c.getContext("2d"), w = img.naturalWidth, h = img.naturalHeight, m = Math.min(w, h);
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, S, S);
+    ctx.drawImage(img, (w - m) / 2, (h - m) / 2, m, m, 0, 0, S, S);
+    return c.toDataURL("image/jpeg", 0.78);
+  } finally { URL.revokeObjectURL(url); }
+}
 let openPerson = null;
 function renderPeople() {
   $("#peopleCount").textContent = state.profiles.length || "";
   const list = state.profiles.map(p => ({ p, s: scoreOf(p.id) })).sort((a, b) => b.s - a.s || a.p.name.localeCompare(b.p.name));
   $("#peopleList").innerHTML = list.length ? list.map(({ p, s }) => {
     const st = standingOf(s), n = state.grudges.filter(g => g.profileId === p.id && g.status === "open").length;
-    return `<button class="p-card" data-pid="${p.id}"><span class="avatar">${esc(initials(p.name))}</span>
+    return `<button class="p-card" data-pid="${p.id}">${avatarHTML(p)}
       <span style="min-width:0"><span class="p-name">${esc(p.name)}</span><br><span class="p-meta">${esc(p.relation || "No relation given")} · ${n} open · score ${s}</span></span>
       <span class="badge ${st.c}">${st.name}</span></button>`;
   }).join("") : `<p class="empty">No dossiers yet. Open one here, or create one while filing a grudge.</p>`;
@@ -1285,11 +1311,12 @@ function renderPersonDetail(pid) {
   $("#personDetail").innerHTML = `
     <div><button class="btn" id="backPeople">← All dossiers</button></div>
     <div class="panel"><h2 class="ph">Dossier</h2><div class="pb">
-      <div class="d-head"><span class="avatar">${esc(initials(p.name))}</span>
+      <div class="d-head">${avatarHTML(p, "big")}
         <div style="min-width:0;flex:1"><div class="p-name" style="font-size:22px">${esc(p.name)}</div><div class="p-meta">${esc(p.relation || "No relation given")} · on file since ${fmtHour(p.createdAt)}</div></div></div>
       <div><span class="lbl-sm">Current standing</span><div class="d-standing ${st.c}">${st.name}</div><div class="p-meta">Score ${s} from ${open.length} open grudge${open.length === 1 ? "" : "s"}</div></div>
       ${spark(hist)}
       <div class="field"><label for="dNotes">Notes</label><textarea id="dNotes">${esc(p.notes || "")}</textarea></div>
+      <div class="row"><button class="btn" id="photoBtn">${p.photo ? "Change photo" : "Add photo"}</button>${p.photo ? `<button class="btn" id="photoDel">Remove photo</button>` : ""}<input type="file" id="photoInput" accept="image/*" hidden></div>
       <div class="row"><button class="btn" id="saveNotes">Save notes</button><button class="btn primary" id="fileAgainst">File a grudge against ${esc(p.name.split(" ")[0])}</button></div>
     </div></div>
     <div class="panel"><h2 class="ph"><span>Open grudges</span><span class="count">${open.length || ""}</span></h2><div class="pb"><div class="list" data-cards>${open.map(grudgeCard).join("") || `<p class="empty">Nothing outstanding.</p>`}</div></div></div>
@@ -1301,6 +1328,13 @@ function renderPersonDetail(pid) {
   $("#peopleIndex").hidden = true; $("#personDetail").hidden = false;
   tickProgress();
   $("#backPeople").onclick = () => { openPerson = null; renderPeople(); window.scrollTo(0, 0); };
+  $("#photoBtn").onclick = () => $("#photoInput").click();
+  $("#photoInput").onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    try { p.photo = await photoFromFile(f); p.updatedAt = Date.now(); save(); renderAll(); toast("Photo saved."); }
+    catch (err) { toast("Couldn't read that picture."); }
+  };
+  if ($("#photoDel")) $("#photoDel").onclick = () => { delete p.photo; p.updatedAt = Date.now(); save(); renderAll(); toast("Photo removed."); };
   $("#saveNotes").onclick = () => { p.notes = $("#dNotes").value; p.updatedAt = Date.now(); save(); toast("Notes saved."); };
   $("#fileAgainst").onclick = () => { showTab("file"); $("#fWho").value = pid; $("#newWhoRow").hidden = true; };
   $("#delPerson").onclick = async () => {
@@ -1359,14 +1393,17 @@ function wire() {
   $("#aNo").addEventListener("click", () => answer(false));
   document.addEventListener("keydown", e => { if (e.key === "Escape") { if (!$("#askModal").hidden) answer(false); else if (!$("#confirmModal").hidden) closeConfirm(); } });
 
-  $("#personForm").addEventListener("submit", e => {
+  $("#personForm").addEventListener("submit", async e => {
     e.preventDefault();
     const name = $("#pName").value.trim(); if (!name) { $("#personErr").textContent = "A dossier needs a name."; return; }
     $("#personErr").textContent = "";
     const id = uid(), now = Date.now();
-    state.profiles.push({ id, name, relation: $("#pRel").value.trim(), notes: $("#pNotes").value.trim(), createdAt: now, history: [] });
+    const prof = { id, name, relation: $("#pRel").value.trim(), notes: $("#pNotes").value.trim(), createdAt: now, history: [] };
+    const pf = $("#pPhoto").files[0];
+    if (pf) { try { prof.photo = await photoFromFile(pf); } catch (err) { toast("Couldn't read that picture; opened the dossier without one."); } }
+    state.profiles.push(prof);
     recordStanding(id, "Dossier opened", now);
-    $("#pName").value = $("#pRel").value = $("#pNotes").value = ""; $("#addPerson").open = false;
+    $("#pName").value = $("#pRel").value = $("#pNotes").value = $("#pPhoto").value = ""; $("#addPerson").open = false;
     save(); renderAll(); thunk(); toast(`Dossier opened on ${name}.`);
   });
 
