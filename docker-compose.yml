@@ -1,4 +1,6 @@
-# Plain HTTP on port 8080. Fine for a home network or behind your own reverse proxy.
+# Plain HTTP on port 8080 by default. Pick another with PORT, e.g.  PORT=8090 docker compose up -d --build
+# (or put PORT=8090 in a file named .env next to this one).
+# Fine for a home network or behind your own reverse proxy.
 # For automatic HTTPS (needed to install it as an app on a phone), use docker-compose.https.yml.
 services:
   grudge-ledger:
@@ -7,4 +9,4 @@ services:
     container_name: grudge-ledger
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "${PORT:-8080}:80"

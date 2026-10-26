@@ -12,6 +12,7 @@ Pick one.
 ```sh
 docker compose up -d --build        # http://your-server:8080
 ```
+Port 8080 taken? Choose another: `PORT=8090 docker compose up -d --build` (or write `PORT=8090` in a `.env` file next to `docker-compose.yml`). The HTTPS option below needs ports 80 and 443 free.
 With automatic HTTPS (needs a domain pointing at the server and ports 80/443 open):
 ```sh
 DOMAIN=grudges.example.com docker compose -f docker-compose.https.yml up -d --build
@@ -44,7 +45,7 @@ python3 -m http.server 8080 -d public    # http://localhost:8080
 | `public/manifest.webmanifest`, `public/icons/` | Installable-app metadata and icons. |
 | `public/fonts/` | Self-hosted Google Fonts (SIL Open Font License): Black Ops One, Share Tech Mono, Bodoni Moda, Cormorant Garamond, Caveat, Special Elite, Courier Prime. No requests go to Google. |
 | `Dockerfile`, `nginx.conf` | Tiny nginx image serving `public/` with sensible cache headers. |
-| `docker-compose.yml` | Run on port 8080. |
+| `docker-compose.yml` | Run on port 8080, or the port in the `PORT` variable. |
 | `docker-compose.https.yml` | Run behind Caddy with automatic HTTPS. |
 | `docs/USER-GUIDE.md` | How to operate the app and what each part is for. |
 

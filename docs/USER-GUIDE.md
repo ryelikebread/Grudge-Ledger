@@ -77,6 +77,6 @@ Nothing is installed on your phone. It's a static web page served from `public/`
 | Web Audio API (built into browsers) | Synthesises every sound live: knob detent clicks, lock "thunk", hold-to-confirm drone, gavel. No audio files. |
 | `navigator.vibrate` (Android browsers) | Haptics on knob lock, confirm, and test. Not available on iOS. |
 | `localStorage` (key `grudge-ledger-v1`) | Where the ledger is stored. |
-| Dockerfile + nginx (optional) | Tiny container that serves `public/`. |
+| Dockerfile + nginx (optional) | Tiny container that serves `public/` (port 8080 by default; set `PORT` to change it). |
 
 **Data model** (what the backup text contains): `profiles[]` (id, name, relation, notes, createdAt, history[] of {at, score, label, note}), `grudges[]` (id, profileId, charge, details, severity 1–100, occurredAt, loggedAt, statN, statU h/d/w/m/y/eternal, expiresAt or null, status open/forgiven/settled/lapsed, resolvedAt), `settings` (skin, sound, haptics), `updatedAt`.
