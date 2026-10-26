@@ -2,54 +2,83 @@
 
 A dramatic, phone-first app for logging grudges to the hour. Pick a severity on a clicking, vibrating 1–100 knob that drives a green-to-red meter, set a statute of limitations, and watch the countdown to peace. Keeps a dossier on every offender (current and past standing), with four skins: Nuclear Football, Windows 98, Little Black Book and Case File.
 
-It is a static web app: one HTML file, no framework, no build step, no database, no tracking. All data stays in the browser (localStorage) on whichever device you use it on.
+Two ways to run it:
+
+| | **Server edition** (default) | **Static edition** |
+|---|---|---|
+| What runs | A tiny Node.js server (no dependencies) that serves the app and stores your ledger | Just web files behind nginx, or any static host |
+| Data | Saved in the browser **and** synced to the server; the server keeps timestamped backups | Saved in each browser only |
+| Several devices | Phone, laptop and tablet stay in step | Independent copies (move data by Copy/Restore backup) |
+| Works offline | Yes, syncs when the server is reachable again | Yes |
 
 ## Run it
 
-Pick one.
-
-**Docker (recommended for a server)**
+### Server edition (Docker)
 ```sh
+git clone https://github.com/ryelikebread/Grudge-Ledger.git
+cd Grudge-Ledger
 docker compose up -d --build        # http://your-server:8080
 ```
-Port 8080 taken? Choose another: `PORT=8090 docker compose up -d --build` (or write `PORT=8090` in a `.env` file next to `docker-compose.yml`). The HTTPS option below needs ports 80 and 443 free.
-With automatic HTTPS (needs a domain pointing at the server and ports 80/443 open):
+- **Another port:** `PORT=8090 docker compose up -d --build` (or write `PORT=8090` in a `.env` file next to `docker-compose.yml`).
+- **Sync password (recommended if others can reach the port):** put `SYNC_TOKEN=a-long-password` in `.env`. The app then asks for it once under Settings → Server sync.
+- **Your data** lives in the Docker volume `grudge-data`: `ledger.json` (current) and `backups/` (timestamped copies).
+- **HTTPS with a domain:** `DOMAIN=grudges.example.com docker compose -f docker-compose.https.yml up -d --build` (needs ports 80/443 free). HTTPS is what lets a phone install it as an app and keep the offline cache; over plain `http://` on your LAN it still works as a normal web page. You can also keep the plain setup and put Tailscale (`tailscale serve --bg 8080`), a Cloudflare Tunnel or your own reverse proxy in front.
+
+### Static edition
 ```sh
-DOMAIN=grudges.example.com docker compose -f docker-compose.https.yml up -d --build
+docker compose -f docker-compose.static.yml up -d --build      # nginx, no sync, no backups
+```
+Or serve the contents of `public/` from any web server (nginx, Apache, Caddy, GitHub Pages, Netlify, S3…). Locally, no install: `python3 -m http.server 8080 -d public`. If a browser has the app open from a static host, the Server sync panel simply doesn't appear.
+
+### Without Docker
+```sh
+PUBLIC_DIR=public DATA_DIR=./data PORT=8080 node server/server.js     # Node 18+
 ```
 
-**Any static web server** (nginx, Apache, Caddy, GitHub Pages, Netlify, S3…): serve the contents of `public/` as the web root. Nothing else is required.
-
-**Locally, no install**
+## Updating
 ```sh
-python3 -m http.server 8080 -d public    # http://localhost:8080
+cd Grudge-Ledger && git pull && docker compose up -d --build
 ```
+Your data is in a volume, so it survives rebuilds. If you changed files in `public/`, bump `VERSION` in `public/sw.js` so devices pick up the new version.
 
-## Use it on a phone
+## How sync works
 
-- **HTTPS matters.** Browsers only let you "Install" / "Add to Home Screen" as a full-screen app, and only keep the offline cache, on `https://` or `localhost`. Plain `http://` over a LAN still works as a normal web page. Use the HTTPS compose file, or put it behind your own reverse proxy / Cloudflare Tunnel / Tailscale.
-- **Vibration** works on Android browsers. iPhones don't allow web pages to vibrate; you still get sound and the visual lock.
-- **Sound** starts after your first tap (a browser rule).
+- Every device keeps a full copy in the browser (localStorage), so the app works with no connection.
+- When the server is reachable (on open, when you return to the app, every 30 seconds, and about a second after each change) the app downloads the server's copy, **merges** it with its own, and uploads the result. Grudges and dossiers from different devices are united by id, a grudge that was closed anywhere stays closed, deletions stay deleted, and dossier history is united.
+- Two devices editing at once can't overwrite each other: the server rejects an upload made against an out-of-date version, and the app re-merges and retries.
+- **Restore from backup** and **Burn the ledger** are deliberate "replace everything" actions; they win over other devices' older copies. Anything another device entered offline *before* the restore is discarded.
+- Sound, vibration and skin choices are per device and are not synced.
 
-## Your data
+## Backups
 
-- Stored in the browser's `localStorage` under the key `grudge-ledger-v1`. It does not sync between devices. Clearing site data erases it.
-- **Settings → Copy backup** copies everything as text; **Restore from backup** pastes it back. Use that to move to another device or browser.
+- The server writes `backups/ledger-YYYYMMDD-HHMMSS.json` (UTC) after changes, at most one every 10 minutes (`BACKUP_MIN_INTERVAL_MIN`), plus one when it shuts down with unsaved changes. It keeps the newest 500 (`BACKUP_KEEP`) and the newest one from each of the last 90 days.
+- In the app: Settings → Server sync → **Back up on server now** / **Download latest server backup**.
+- On the server, copy them out of the volume:
+  ```sh
+  docker cp grudge-ledger:/data/backups ./grudge-backups
+  ```
+- **Restoring:** in the app, Settings → Records → Restore from backup, paste the contents of a backup file (or any Copy-backup text). Or stop the container and put a backup file's contents in `ledger.json` inside the volume.
+
+## Security
+
+The sync API has no accounts. Anyone who can reach the port can read and change the ledger unless you set `SYNC_TOKEN`. On plain HTTP the password is sent unencrypted, so keep it on a trusted network, or put HTTPS/Tailscale in front. Nothing is sent to third parties; fonts are bundled.
 
 ## What's in the repo
 
 | Path | Purpose |
 |---|---|
 | `public/index.html` | The whole app (HTML + CSS + JS). |
-| `public/sw.js` | Service worker: caches the app so it works offline. Bump `VERSION` inside it whenever you change a file in `public/`. |
-| `public/manifest.webmanifest`, `public/icons/` | Installable-app metadata and icons. |
-| `public/fonts/` | Self-hosted Google Fonts (SIL Open Font License): Black Ops One, Share Tech Mono, Bodoni Moda, Cormorant Garamond, Caveat, Special Elite, Courier Prime. No requests go to Google. |
-| `Dockerfile`, `nginx.conf` | Tiny nginx image serving `public/` with sensible cache headers. |
-| `docker-compose.yml` | Run on port 8080, or the port in the `PORT` variable. |
-| `docker-compose.https.yml` | Run behind Caddy with automatic HTTPS. |
+| `public/merge.js` | The merge rules used for sync (also unit tested). |
+| `public/sw.js`, `manifest.webmanifest`, `icons/` | Offline cache and installable-app metadata. Bump `VERSION` in `sw.js` when `public/` changes. |
+| `public/fonts/` | Self-hosted Google Fonts (SIL Open Font License). |
+| `server/server.js` | The sync server: serves `public/`, stores the ledger, writes backups. Node standard library only. |
+| `Dockerfile`, `docker-compose.yml` | Server edition (default). |
+| `docker-compose.https.yml` | Server edition behind Caddy with automatic HTTPS. |
+| `Dockerfile.static`, `nginx.conf`, `docker-compose.static.yml` | Static edition. |
+| `tests/` | `node --test tests/merge.test.js tests/server.test.js` |
 | `docs/USER-GUIDE.md` | How to operate the app and what each part is for. |
 
-Browser features used: Web Audio API (all sounds are synthesised live, no audio files), `navigator.vibrate`, `localStorage`, service workers, web app manifest.
+API (all under `/api/`, JSON): `GET status`, `GET/PUT ledger` (PUT needs the `baseRev` you last read), `POST backup`, `GET backups`, `GET backups/<name|latest>`.
 
 ## Customising
 

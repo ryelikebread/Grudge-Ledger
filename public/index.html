@@ -497,6 +497,15 @@ details.add>summary::-webkit-details-marker{display:none}
         <p class="note" id="buzzNote">Vibration works on most Android phones. iPhones (Safari and the Claude app) don't allow web pages to vibrate, so you'll get the sound and the visual lock instead.</p>
       </div>
     </div>
+    <div class="panel" id="syncPanel" hidden>
+      <h2 class="ph">Server sync</h2>
+      <div class="pb">
+        <p class="note" id="syncNote"></p>
+        <div class="field" id="tokenRow" hidden><label for="syncToken">Sync password</label><input id="syncToken" type="password" autocomplete="off" placeholder="Set by whoever runs the server"></div>
+        <div class="row"><button class="btn primary" type="button" id="syncNowBtn">Sync now</button><button class="btn" type="button" id="srvBackupBtn">Back up on server now</button><button class="btn" type="button" id="srvDownloadBtn">Download latest server backup</button></div>
+        <p class="note">Changes sync automatically. If the server is out of reach you can keep working; everything is sent when it's back.</p>
+      </div>
+    </div>
     <div class="panel">
       <h2 class="ph">Records</h2>
       <div class="pb">
@@ -568,6 +577,7 @@ details.add>summary::-webkit-details-marker{display:none}
 
 <div class="toast" id="toast" hidden role="status"></div>
 
+<script src="merge.js"></script>
 <script>
 (() => {
 "use strict";
@@ -623,12 +633,12 @@ const STAT_PRESETS = [
 const UNIT = { h: "hour", d: "day", w: "week", m: "month", y: "year" };
 
 /* ---------- state & storage ---------- */
-const blank = () => ({ v: 1, profiles: [], grudges: [], settings: { skin: "football", sound: true, haptics: true }, updatedAt: 0 });
+const blank = () => ({ v: 1, epoch: 0, profiles: [], grudges: [], deleted: [], settings: { skin: "football", sound: true, haptics: true }, updatedAt: 0 });
 function normalize(s) {
   const b = blank();
   if (!s || typeof s !== "object") return b;
-  return { v: 1, profiles: Array.isArray(s.profiles) ? s.profiles : [], grudges: Array.isArray(s.grudges) ? s.grudges : [],
-    settings: Object.assign(b.settings, s.settings || {}), updatedAt: +s.updatedAt || 0 };
+  return { v: 1, epoch: +s.epoch || 0, profiles: Array.isArray(s.profiles) ? s.profiles : [], grudges: Array.isArray(s.grudges) ? s.grudges : [],
+    deleted: Array.isArray(s.deleted) ? s.deleted : [], settings: Object.assign(b.settings, s.settings || {}), updatedAt: +s.updatedAt || 0 };
 }
 function loadLocal() { try { return normalize(JSON.parse(localStorage.getItem(KEY))); } catch (e) { return blank(); } }
 let state = loadLocal();
@@ -638,7 +648,9 @@ function save() {
   state.updatedAt = Date.now();
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
   clearTimeout(pushTimer); pushTimer = setTimeout(pushRemote, 500);
+  scheduleSync();
 }
+function tomb(id) { state.deleted.push({ id, at: Date.now() }); if (state.deleted.length > 500) state.deleted = state.deleted.slice(-500); }
 async function pushRemote() {
   if (!docRef) return;
   if (writing) { dirty = true; return; }
@@ -677,13 +689,99 @@ async function initCloud() {
 }
 function setSync(mode, code) {
   const el = $("#sync");
-  el.className = "sync" + (mode === "cloud" ? " cloud" : mode === "err" ? " err" : "");
-  el.querySelector("span").textContent = mode === "cloud" ? "Saved to account" : mode === "err" ? "Sync paused" : "This device";
-  $("#storeNote").textContent = mode === "cloud"
-    ? "Your ledger is saved privately to your Claude account, so it follows you to any device where you open this page. Only you can see it. A copy is also kept on this device."
-    : mode === "err" ? "Couldn't reach your account just now" + (code === "quota_exceeded" ? " (storage is full)" : "") + ". Everything is still saved on this device and will sync when the connection returns."
-    : (window.claude ? "Your ledger is saved on this device. Sign in to Claude to keep it in your account too. Copy a backup now and then to be safe."
-      : "Your ledger is saved in this browser on this device only (nothing is sent anywhere). Copy a backup now and then, and use it to move your ledger to another device.");
+  el.className = "sync" + (mode === "cloud" || mode === "server" ? " cloud" : mode === "err" || mode === "offline" || mode === "auth" ? " err" : "");
+  el.querySelector("span").textContent = { cloud: "Saved to account", server: "Synced with server", offline: "Offline, will sync", auth: "Sync password needed", err: "Sync paused" }[mode] || "This device";
+  const notes = {
+    cloud: "Your ledger is saved privately to your Claude account, so it follows you to any device where you open this page. Only you can see it. A copy is also kept on this device.",
+    err: "Couldn't reach your account just now" + (code === "quota_exceeded" ? " (storage is full)" : "") + ". Everything is still saved on this device and will sync when the connection returns.",
+    server: "Your ledger is saved on this device and synced with your server, which keeps timestamped backups.",
+    offline: "Can't reach the server right now. Everything is saved on this device and will sync as soon as the server is reachable again.",
+    auth: "The server needs its sync password. Enter it under Server sync."
+  };
+  $("#storeNote").textContent = notes[mode] || (window.claude
+    ? "Your ledger is saved on this device. Sign in to Claude to keep it in your account too. Copy a backup now and then to be safe."
+    : "Your ledger is saved in this browser on this device only (nothing is sent anywhere). Copy a backup now and then, and use it to move your ledger to another device.");
+  if (srv.on) renderSyncPanel(mode);
+}
+
+/* ---------- optional sync with the Grudge Ledger server (only when the page is served by it) ---------- */
+const srv = { on: false, auth: false, token: "", busy: false, again: false, timer: 0, lastOk: 0, info: null };
+const SRV_FLAG = KEY + "-server", SRV_TOKEN = KEY + "-token";
+try { srv.token = localStorage.getItem(SRV_TOKEN) || ""; } catch (e) {}
+async function srvFetch(path, opts = {}) {
+  const headers = Object.assign({}, opts.headers || {});
+  if (srv.token) headers.Authorization = "Bearer " + srv.token;
+  if (opts.body) headers["Content-Type"] = "application/json";
+  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 12000);
+  try { return await fetch(path, Object.assign({}, opts, { headers, cache: "no-store", signal: ctrl.signal })); }
+  finally { clearTimeout(t); }
+}
+/* "yes" = server found, "no" = this is a plain static host, "unknown" = couldn't reach anything */
+async function srvDetect() {
+  try {
+    const r = await srvFetch("api/status");
+    if (!r.ok) return "no";
+    const j = await r.json();
+    if (!j || j.sync !== true) return "no";
+    srv.auth = !!j.auth; srv.info = j; return "yes";
+  } catch (e) { return e instanceof SyntaxError ? "no" : "unknown"; }
+}
+function adopt(merged) {
+  const keep = state.settings;
+  state = normalize(merged); state.settings = keep;
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  renderAll();
+}
+function scheduleSync() { if (!srv.on) return; clearTimeout(srv.timer); srv.timer = setTimeout(syncNow, 1200); }
+async function syncNow() {
+  if (!srv.on) return;
+  if (srv.busy) { srv.again = true; return; }
+  srv.busy = true;
+  try {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const r = await srvFetch("api/ledger");
+      if (r.status === 401) { setSync("auth"); return; }
+      if (!r.ok) throw new Error("http " + r.status);
+      const remote = await r.json();
+      const remoteState = remote.state ? normalize(remote.state) : null;
+      if (remoteState) {
+        const merged = GrudgeMerge.merge(state, remoteState);
+        if (GrudgeMerge.canon(merged) !== GrudgeMerge.canon(state)) adopt(merged);
+      }
+      if (!remoteState || GrudgeMerge.canon(remoteState) !== GrudgeMerge.canon(state)) {
+        const pr = await srvFetch("api/ledger", { method: "PUT", body: JSON.stringify({ baseRev: remote.rev, state }) });
+        if (pr.status === 409) continue;
+        if (pr.status === 401) { setSync("auth"); return; }
+        if (!pr.ok) throw new Error("http " + pr.status);
+      }
+      srv.lastOk = Date.now();
+      try { const sr = await srvFetch("api/status"); if (sr.ok) srv.info = await sr.json(); } catch (e) {}
+      setSync("server"); return;
+    }
+    setSync("offline");
+  } catch (e) { setSync("offline"); }
+  finally { srv.busy = false; if (srv.again) { srv.again = false; setTimeout(syncNow, 300); } }
+}
+function renderSyncPanel(mode) {
+  $("#syncPanel").hidden = false;
+  $("#tokenRow").hidden = !srv.auth && mode !== "auth";
+  const i = srv.info, bits = [];
+  if (srv.lastOk) bits.push("Last synced " + new Date(srv.lastOk).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + ".");
+  if (i && i.backups) bits.push(i.backups.count ? `The server holds ${i.backups.count} backup${i.backups.count === 1 ? "" : "s"}, the latest from ${new Date(i.savedAt || Date.now()).toLocaleDateString()}.` : "No server backup yet.");
+  $("#syncNote").textContent = (mode === "offline" ? "The server can't be reached right now; changes are kept on this device and sent later. " : mode === "auth" ? "Enter the sync password to connect. " : "") + bits.join(" ");
+}
+async function initServer() {
+  if (window.claude || !/^https?:$/.test(location.protocol)) return;
+  let known = false; try { known = localStorage.getItem(SRV_FLAG) === "1"; } catch (e) {}
+  const d = await srvDetect();
+  if (d === "no") { try { localStorage.removeItem(SRV_FLAG); } catch (e) {} return; }
+  if (d === "unknown" && !known) return;
+  srv.on = true; try { localStorage.setItem(SRV_FLAG, "1"); } catch (e) {}
+  renderSyncPanel(); 
+  await syncNow();
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncNow(); });
+  window.addEventListener("online", syncNow);
+  setInterval(() => { if (document.visibilityState === "visible") syncNow(); }, 30000);
 }
 
 /* ---------- helpers ---------- */
@@ -967,7 +1065,7 @@ async function onCardAction(e) {
   } else if (act === "strike") {
     if (!await ask("Strike from the record?", `"${g.charge}" will be deleted completely. This can't be undone.`, "Strike it", true)) return;
     const wasOpen = g.status === "open";
-    state.grudges = state.grudges.filter(x => x !== g);
+    state.grudges = state.grudges.filter(x => x !== g); tomb(g.id);
     if (wasOpen) recordStanding(g.profileId, `Struck from record: "${g.charge}"`);
     toast("Struck from the record.");
   }
@@ -1165,11 +1263,11 @@ function renderPersonDetail(pid) {
   $("#peopleIndex").hidden = true; $("#personDetail").hidden = false;
   tickProgress();
   $("#backPeople").onclick = () => { openPerson = null; renderPeople(); window.scrollTo(0, 0); };
-  $("#saveNotes").onclick = () => { p.notes = $("#dNotes").value; save(); toast("Notes saved."); };
+  $("#saveNotes").onclick = () => { p.notes = $("#dNotes").value; p.updatedAt = Date.now(); save(); toast("Notes saved."); };
   $("#fileAgainst").onclick = () => { showTab("file"); $("#fWho").value = pid; $("#newWhoRow").hidden = true; };
   $("#delPerson").onclick = async () => {
     if (!await ask(`Destroy ${p.name}'s dossier?`, `This deletes ${p.name} and all ${gs.length} of their grudges. This can't be undone.`, "Destroy it", true)) return;
-    state.profiles = state.profiles.filter(x => x.id !== pid); state.grudges = state.grudges.filter(g => g.profileId !== pid);
+    state.profiles = state.profiles.filter(x => x.id !== pid); state.grudges = state.grudges.filter(g => g.profileId !== pid); tomb(pid);
     openPerson = null; save(); renderAll(); toast("Dossier destroyed.");
   };
 }
@@ -1250,16 +1348,31 @@ function wire() {
     const p = navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(txt) : Promise.reject();
     p.then(() => toast("Backup copied. Paste it somewhere safe."), () => { out.hidden = false; out.value = txt; out.focus(); out.select(); toast("Select all and copy the text below."); });
   });
+  $("#syncNowBtn").addEventListener("click", async () => { await syncNow(); toast(srv.lastOk && Date.now() - srv.lastOk < 5000 ? "Synced." : "Couldn't sync yet."); });
+  $("#syncToken").addEventListener("change", e => { srv.token = e.target.value.trim(); try { localStorage.setItem(SRV_TOKEN, srv.token); } catch (err) {} syncNow(); });
+  $("#srvBackupBtn").addEventListener("click", async () => {
+    try { await syncNow(); const r = await srvFetch("api/backup", { method: "POST" }); const j = await r.json(); toast(r.ok ? "Backup saved on the server." : (j.error || "Couldn't back up.")); const sr = await srvFetch("api/status"); if (sr.ok) { srv.info = await sr.json(); renderSyncPanel("server"); } }
+    catch (e) { toast("Couldn't reach the server."); }
+  });
+  $("#srvDownloadBtn").addEventListener("click", async () => {
+    try {
+      const r = await srvFetch("api/backups/latest"); if (!r.ok) return toast(r.status === 404 ? "No server backup yet." : "Couldn't download.");
+      const blob = await r.blob(), a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = "grudge-ledger-backup.json"; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    } catch (e) { toast("Couldn't reach the server."); }
+  });
   $("#showRestore").addEventListener("click", () => { $("#restoreBox").hidden = !$("#restoreBox").hidden; });
   $("#doRestore").addEventListener("click", async () => {
     let data; try { data = JSON.parse($("#restoreText").value); } catch (e) { return toast("That isn't a valid backup."); }
+    if (data && data.state && !data.profiles) data = data.state; // a whole server backup file
     if (!data || !Array.isArray(data.grudges) || !Array.isArray(data.profiles)) return toast("That isn't a Grudge Ledger backup.");
     if (!await ask("Replace your ledger?", `This replaces everything with the backup (${data.profiles.length} dossiers, ${data.grudges.length} grudges).`, "Replace", true)) return;
-    state = normalize(data); save(); $("#restoreText").value = ""; $("#restoreBox").hidden = true; renderAll(); toast("Ledger restored.");
+    state = normalize(data); state.deleted = []; state.epoch = Date.now(); save(); $("#restoreText").value = ""; $("#restoreBox").hidden = true; renderAll(); toast("Ledger restored.");
   });
   $("#burn").addEventListener("click", async () => {
     if (!await ask("Burn the ledger?", "Every dossier and every grudge will be erased. Your skin and sound settings stay. This can't be undone.", "Burn it", true)) return;
-    const s = state.settings; state = blank(); state.settings = s; save(); renderAll(); thunk(0, .5); toast("The ledger is ash.");
+    const s = state.settings; state = blank(); state.settings = s; state.epoch = Date.now(); save(); renderAll(); thunk(0, .5); toast("The ledger is ash.");
   });
 }
 
@@ -1274,6 +1387,7 @@ renderAll();
 checkLapses();
 setInterval(() => { tickProgress(); checkLapses(); }, 1000);
 initCloud();
+initServer();
 if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
 </script>

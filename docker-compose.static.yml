@@ -1,0 +1,13 @@
+# Static-only version: just the web app, no server component, no sync, no backups.
+# Each browser keeps its own data. Use:  docker compose -f docker-compose.static.yml up -d --build
+# Pick another host port:   PORT=8090 docker compose -f docker-compose.static.yml up -d --build
+services:
+  grudge-ledger:
+    build:
+      context: .
+      dockerfile: Dockerfile.static
+    image: grudge-ledger-static
+    container_name: grudge-ledger
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:80"

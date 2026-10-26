@@ -58,25 +58,36 @@ Settings → Skin. Each skin changes the look *and* the wording of the confirm r
 - Sound uses your phone's speaker; it starts after your first tap (browsers require that). Toggle in Settings; "Test click" previews it.
 - **Vibration works on Android** (Chrome and most Android browsers). **iPhones do not allow web pages to vibrate** (Safari and every iOS browser), so on iPhone you get sound and the visual lock only. "Test vibration" tells you whether your device buzzed.
 
-## Where your data lives
-- In your browser on the device you use (localStorage). Nothing is sent to any server, and it does not sync between devices.
-- **Backup:** Settings → Copy backup puts the whole ledger on your clipboard as text. Restore from backup replaces the ledger with pasted text. Use this to move to another device.
-- **Burn the ledger** erases all dossiers and grudges (settings stay).
+## Where your data lives and server sync
+- **Always on your device first:** every change is saved in the browser immediately, so the app works with no connection.
+- **If this copy of the app is served by the Grudge Ledger server** (the default Docker setup), it also syncs with the server. The top badge says **Synced with server**, or **Offline, will sync** when the server can't be reached (keep working; it sends everything later). Settings → **Server sync** shows the last sync time and how many backups the server holds.
+- **Phone and laptop stay in step.** Changes merge: grudges and dossiers added on different devices are all kept, a closed grudge stays closed, and deleted things stay deleted. Open the app or tap **Sync now** to pull the latest.
+- **Server backups:** the server saves timestamped copies automatically. **Back up on server now** makes one immediately; **Download latest server backup** saves one to your device.
+- **Sync password:** if the server was set up with one, the Server sync panel asks for it once.
+- **If the app is served from a plain static host** there's no sync panel, and data stays only in that browser. Use **Copy backup** / **Restore from backup** to move it.
+- **Restore from backup** and **Burn the ledger** replace everything on every device the next time they sync.
+- **Copy backup** puts the whole ledger on your clipboard as text, in any edition.
+- Sound, vibration and skin are per device.
 
 ---
 
 ## What's installed / technical details
 
-Nothing is installed on your phone. It's a static web page served from `public/`.
+Nothing is installed on your phone. The server edition is one small container; the static edition is just web files.
 
 | Piece | Purpose |
 |---|---|
 | `public/index.html` | The whole app: layout, four skins, logic. No frameworks or libraries. |
+| `public/merge.js` | Combines two copies of the ledger during sync (by id; closed beats open; deletions kept). |
 | `public/sw.js` + `manifest.webmanifest` + `icons/` | Offline cache and "install as app" support. |
 | `public/fonts/` (self-hosted) | Black Ops One and Share Tech Mono (Nuclear Football), Bodoni Moda, Cormorant Garamond and Caveat (Little Black Book), Special Elite and Courier Prime (Case File). Windows 98 uses the system Tahoma/Segoe font. |
+| `server/server.js` (Node.js 22, no packages) | Serves the app, stores the ledger (`/data/ledger.json`), writes timestamped backups (`/data/backups/`), optional `SYNC_TOKEN` password. |
+| Docker volume `grudge-data` | Where the server keeps its data; survives rebuilds. |
 | Web Audio API (built into browsers) | Synthesises every sound live: knob detent clicks, lock "thunk", hold-to-confirm drone, gavel. No audio files. |
 | `navigator.vibrate` (Android browsers) | Haptics on knob lock, confirm, and test. Not available on iOS. |
-| `localStorage` (key `grudge-ledger-v1`) | Where the ledger is stored. |
-| Dockerfile + nginx (optional) | Tiny container that serves `public/` (port 8080 by default; set `PORT` to change it). |
+| `localStorage` (key `grudge-ledger-v1`) | The on-device copy (also the only copy in the static edition). |
+| Dockerfile.static + nginx (optional) | The static edition. |
 
-**Data model** (what the backup text contains): `profiles[]` (id, name, relation, notes, createdAt, history[] of {at, score, label, note}), `grudges[]` (id, profileId, charge, details, severity 1–100, occurredAt, loggedAt, statN, statU h/d/w/m/y/eternal, expiresAt or null, status open/forgiven/settled/lapsed, resolvedAt), `settings` (skin, sound, haptics), `updatedAt`.
+**Server settings** (environment variables): `PORT` (host port in compose, default 8080), `SYNC_TOKEN`, `BACKUP_MIN_INTERVAL_MIN` (default 10), `BACKUP_KEEP` (default 500).
+
+**Data model** (what the backup text contains): `profiles[]` (id, name, relation, notes, createdAt, updatedAt, history[] of {at, score, label, note}), `grudges[]` (id, profileId, charge, details, severity 1–100, occurredAt, loggedAt, statN, statU h/d/w/m/y/eternal, expiresAt or null, status open/forgiven/settled/lapsed, resolvedAt), `deleted[]` (ids removed, so sync doesn't bring them back), `epoch` (bumped by Restore/Burn), `settings` (skin, sound, haptics), `updatedAt`.

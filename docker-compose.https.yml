@@ -1,10 +1,15 @@
 # Automatic HTTPS with Caddy (Let's Encrypt). Needs a domain name pointing at this server and ports 80/443 open.
 #   DOMAIN=grudges.example.com docker compose -f docker-compose.https.yml up -d --build
+# Includes server sync and backups (same as docker-compose.yml).
 services:
   grudge-ledger:
     build: .
     image: grudge-ledger
     restart: unless-stopped
+    environment:
+      SYNC_TOKEN: ${SYNC_TOKEN:-}
+    volumes:
+      - grudge-data:/data
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -13,8 +18,9 @@ services:
       - "443:443"
     environment:
       DOMAIN: ${DOMAIN:?set DOMAIN to your domain name}
-    command: caddy reverse-proxy --from ${DOMAIN} --to grudge-ledger:80
+    command: caddy reverse-proxy --from ${DOMAIN} --to grudge-ledger:8080
     volumes:
       - caddy_data:/data
 volumes:
+  grudge-data:
   caddy_data:

@@ -1,7 +1,8 @@
-# Plain HTTP on port 8080 by default. Pick another with PORT, e.g.  PORT=8090 docker compose up -d --build
-# (or put PORT=8090 in a file named .env next to this one).
-# Fine for a home network or behind your own reverse proxy.
-# For automatic HTTPS (needed to install it as an app on a phone), use docker-compose.https.yml.
+# Grudge Ledger with server sync and backups.
+#   docker compose up -d --build            -> http://your-server:8080
+# Pick another host port:   PORT=8090 docker compose up -d --build   (or put PORT=8090 in a file named .env here)
+# Optional sync password:   SYNC_TOKEN=some-long-password           (also fine in .env)
+# Data (ledger + timestamped backups) lives in the "grudge-data" Docker volume.
 services:
   grudge-ledger:
     build: .
@@ -9,4 +10,12 @@ services:
     container_name: grudge-ledger
     restart: unless-stopped
     ports:
-      - "${PORT:-8080}:80"
+      - "${PORT:-8080}:8080"
+    environment:
+      SYNC_TOKEN: ${SYNC_TOKEN:-}
+      BACKUP_MIN_INTERVAL_MIN: ${BACKUP_MIN_INTERVAL_MIN:-10}
+      BACKUP_KEEP: ${BACKUP_KEEP:-500}
+    volumes:
+      - grudge-data:/data
+volumes:
+  grudge-data:
