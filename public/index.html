@@ -435,12 +435,12 @@ details.add>summary::-webkit-details-marker{display:none}
           </div>
           <div class="knob-zone">
             <div class="knob-wrap">
-              <button type="button" class="kbtn" id="kMinus" aria-label="Lower severity">−</button>
+              <button type="button" class="kbtn" id="kMinus" data-nosound aria-label="Lower severity">−</button>
               <div class="knob" id="knob" role="slider" tabindex="0" aria-label="Severity, 1 to 100" aria-valuemin="1" aria-valuemax="100" aria-valuenow="50">
                 <div class="knob-ticks" id="knobTicks"></div>
                 <div class="knob-cap" id="knobCap"><span class="knob-mark"></span></div>
               </div>
-              <button type="button" class="kbtn" id="kPlus" aria-label="Raise severity">+</button>
+              <button type="button" class="kbtn" id="kPlus" data-nosound aria-label="Raise severity">+</button>
             </div>
             <p class="hint">Drag the knob up or down, or scroll on it. Let go to lock it in.</p>
           </div>
@@ -502,7 +502,7 @@ details.add>summary::-webkit-details-marker{display:none}
       <div class="pb">
         <label class="toggle" for="sSound"><span>Knob clicks and sound effects</span><input type="checkbox" id="sSound"></label>
         <label class="toggle" for="sHaptics"><span>Vibrate when severity locks and on sealing</span><input type="checkbox" id="sHaptics"></label>
-        <div class="row"><button class="btn" type="button" id="testBuzz">Test vibration</button><button class="btn" type="button" id="testClick">Test click</button></div>
+        <div class="row"><button class="btn" type="button" id="testBuzz">Test vibration</button><button class="btn" type="button" id="testClick" data-nosound>Test click</button></div>
         <p class="note" id="buzzNote">Vibration works on most Android phones. iPhones (Safari and the Claude app) don't allow web pages to vibrate, so you'll get the sound and the visual lock instead.</p>
       </div>
     </div>
@@ -572,7 +572,7 @@ details.add>summary::-webkit-details-marker{display:none}
     <h2 id="cTitle">Confirm</h2>
     <div class="summary" id="cSummary"></div>
     <p class="oath" id="cOath"></p>
-    <button type="button" class="hold" id="holdBtn"><span class="fill"></span><span class="lbl" id="holdLbl">Hold to commit</span></button>
+    <button type="button" class="hold" id="holdBtn" data-nosound><span class="fill"></span><span class="lbl" id="holdLbl">Hold to commit</span></button>
     <button type="button" class="btn" id="cCancel">Withdraw</button>
   </div>
 </div>
@@ -885,7 +885,7 @@ function audio() {
   } catch (e) { return null; }
 }
 function env(c, t, peak, dur) { const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + dur); return g; }
-let lastClick = 0;
+let lastClick = -1;
 function click(v) {
   const c = audio(); if (!c) return;
   const t = c.currentTime; if (t - lastClick < 0.012) return; lastClick = t;
@@ -907,6 +907,42 @@ function thunk(t0 = 0, deep = 1) {
     const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 900;
     n.connect(lp).connect(env(c, t, 0.6, 0.12)).connect(c.destination); n.start(t); n.stop(t + 0.14);
   } catch (e) {}
+}
+/* ---------- one sound for every control ----------
+   A single delegated listener plays a tap for any button, tab, chip, skin, toggle, dropdown or file picker,
+   so new controls get sound automatically. Opt a control out with the data-nosound attribute (the knob, its
+   +/- buttons and the hold-to-confirm button make their own sounds). Respects the sound setting. */
+const UI_SEL = 'button, summary, select, a[href], [role="button"], input[type="file"], input[type="checkbox"], label.toggle, .tab, .chip, .skin-opt';
+function uiTarget(e) {
+  const t = e.target && e.target.closest ? e.target.closest(UI_SEL) : null;
+  if (!t || t.disabled || t.hidden || t.hasAttribute("disabled") || t.closest("[data-nosound]")) return null;
+  return t;
+}
+function uiSound(el) {
+  if (!state.settings.sound) return;
+  const j = Math.random() * 8 - 4;
+  if (el.matches('.btn.danger, [data-act="strike"]')) return thunk(0, 0.7);
+  if (el.matches(".tab")) return click(18 + j);
+  if (el.matches(".btn.primary, .btn.big")) return click(100 + j);
+  if (el.matches(".chip, .skin-opt, label.toggle, input[type=checkbox]")) return click(75 + j);
+  return click(55 + j);
+}
+function initUiSounds() {
+  let down = null, lastTouch = 0, lastEl = null;
+  document.addEventListener("pointerdown", e => { const t = uiTarget(e); down = t ? { t, x: e.clientX, y: e.clientY } : null; if (t) audio(); }, true);
+  document.addEventListener("pointerup", e => {
+    const t = uiTarget(e);
+    if (down && t && t === down.t && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 14) { lastTouch = performance.now(); lastEl = t; uiSound(t); }
+    down = null;
+  }, true);
+  document.addEventListener("pointercancel", () => { down = null; }, true);
+  // keyboard / assistive-tech activation arrives as a click with no pointer event just before it
+  document.addEventListener("click", e => {
+    const t = uiTarget(e); if (!t) return;
+    // skip the click that follows a pointer tap we already sounded (including a label's synthetic click on its input)
+    if (performance.now() - lastTouch < 600 && lastEl && (lastEl.contains(t) || t.contains(lastEl))) return;
+    audio(); uiSound(t);
+  }, true);
 }
 function seal() { thunk(0, 1.1); thunk(0.2, .9); thunk(0.55, .7); }
 let holdOsc = null;
@@ -1367,6 +1403,7 @@ function renderAll() { applySkin(); renderLedger(); renderPeople(); renderSettin
 
 /* ---------- wiring ---------- */
 function wire() {
+  initUiSounds();
   $$(".tab").forEach(b => b.addEventListener("click", () => { audio(); showTab(b.dataset.tab); }));
   $("#view-ledger").addEventListener("click", onCardAction);
   $("#personDetail").addEventListener("click", e => { if (e.target.closest("[data-act]")) onCardAction(e); });
@@ -1378,7 +1415,7 @@ function wire() {
   $("#statChips").addEventListener("click", e => {
     const c = e.target.closest(".chip"); if (!c) return;
     const p = STAT_PRESETS[+c.dataset.i]; $("#fStatU").value = p.u; if (p.n) $("#fStatN").value = p.n;
-    click(60); updateStatPreview();
+    updateStatPreview();
   });
   $("#fileBtn").addEventListener("click", onFile);
   $("#fileForm").addEventListener("submit", e => { e.preventDefault(); onFile(); });
@@ -1409,7 +1446,7 @@ function wire() {
 
   $("#skinList").addEventListener("click", e => {
     const b = e.target.closest("[data-skin]"); if (!b) return;
-    state.settings.skin = b.dataset.skin; save(); renderAll(); click(70);
+    state.settings.skin = b.dataset.skin; save(); renderAll();
   });
   $("#sSound").addEventListener("change", e => { state.settings.sound = e.target.checked; save(); if (e.target.checked) click(50); });
   $("#sHaptics").addEventListener("change", e => { state.settings.haptics = e.target.checked; save(); });

@@ -62,6 +62,7 @@ Settings → Skin. Each skin changes the look *and* the wording of the confirm r
 
 ## Sound and vibration
 - Sound uses your phone's speaker; it starts after your first tap (browsers require that). Toggle in Settings; "Test click" previews it.
+- **Every control clicks.** Tabs, buttons, chips, skin tiles, switches, dropdowns, the photo picker and dialog buttons all make a short mechanical tap (a different pitch for each kind; destructive buttons like Strike get a low thud). It plays when you lift your finger, so scrolling past a button stays silent, and it also plays when you activate a control from a keyboard. The knob, its +/− buttons and the hold-to-confirm button have their own sounds. Turning **Knob clicks and sound effects** off silences all of it.
 - **Vibration works on Android** (Chrome and most Android browsers). **iPhones do not allow web pages to vibrate** (Safari and every iOS browser), so on iPhone you get sound and the visual lock only. "Test vibration" tells you whether your device buzzed.
 
 ## Where your data lives and server sync
@@ -90,7 +91,7 @@ Nothing is installed on your phone. The server edition is one small container; t
 | `public/fonts/` (self-hosted) | Black Ops One and Share Tech Mono (Nuclear Football), Bodoni Moda, Cormorant Garamond and Caveat (Little Black Book), Special Elite and Courier Prime (Case File). Windows 98 uses the system Tahoma/Segoe font. |
 | `server/server.js` (Node.js 22, no packages) | Serves the app, stores the ledger (`/data/ledger.json`), writes timestamped backups (`/data/backups/`), optional `SYNC_TOKEN` password. |
 | Docker volume `grudge-data` | Where the server keeps its data; survives rebuilds. |
-| Web Audio API (built into browsers) | Synthesises every sound live: knob detent clicks, lock "thunk", hold-to-confirm drone, gavel. No audio files. |
+| Web Audio API (built into browsers) | Synthesises every sound live: knob detent clicks, button taps, lock "thunk", hold-to-confirm drone, gavel. No audio files. |
 | `navigator.vibrate` (Android browsers) | Haptics on knob lock, confirm, and test. Not available on iOS. |
 | `localStorage` (key `grudge-ledger-v1`) | The on-device copy (also the only copy in the static edition). |
 | Dockerfile.static + nginx (optional) | The static edition. |
