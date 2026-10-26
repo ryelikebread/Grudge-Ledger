@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
     environment:
       SYNC_TOKEN: ${SYNC_TOKEN:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
     volumes:
       - grudge-data:/data
   caddy:

@@ -501,9 +501,11 @@ details.add>summary::-webkit-details-marker{display:none}
       <h2 class="ph">Server sync</h2>
       <div class="pb">
         <p class="note" id="syncNote"></p>
+        <div class="field" id="urlRow" hidden><label for="srvUrl">Sync server address</label><input id="srvUrl" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="https://ryesbakery.your-tailnet.ts.net"></div>
+        <div class="row" id="urlBtns" hidden><button class="btn primary" type="button" id="connectBtn">Connect</button><button class="btn" type="button" id="disconnectBtn" hidden>Disconnect</button></div>
         <div class="field" id="tokenRow" hidden><label for="syncToken">Sync password</label><input id="syncToken" type="password" autocomplete="off" placeholder="Set by whoever runs the server"></div>
-        <div class="row"><button class="btn primary" type="button" id="syncNowBtn">Sync now</button><button class="btn" type="button" id="srvBackupBtn">Back up on server now</button><button class="btn" type="button" id="srvDownloadBtn">Download latest server backup</button></div>
-        <p class="note">Changes sync automatically. If the server is out of reach you can keep working; everything is sent when it's back.</p>
+        <div class="row" id="syncBtns"><button class="btn primary" type="button" id="syncNowBtn">Sync now</button><button class="btn" type="button" id="srvBackupBtn">Back up on server now</button><button class="btn" type="button" id="srvDownloadBtn">Download latest server backup</button></div>
+        <p class="note" id="syncHelp">Changes sync automatically. If the server is out of reach you can keep working; everything is sent when it's back.</p>
       </div>
     </div>
     <div class="panel">
@@ -705,15 +707,16 @@ function setSync(mode, code) {
 }
 
 /* ---------- optional sync with the Grudge Ledger server (only when the page is served by it) ---------- */
-const srv = { on: false, auth: false, token: "", busy: false, again: false, timer: 0, lastOk: 0, info: null };
-const SRV_FLAG = KEY + "-server", SRV_TOKEN = KEY + "-token";
+const srv = { on: false, auth: false, token: "", url: "", listening: false, busy: false, again: false, timer: 0, lastOk: 0, info: null };
+const SRV_FLAG = KEY + "-server", SRV_TOKEN = KEY + "-token", SRV_URL = KEY + "-serverurl";
 try { srv.token = localStorage.getItem(SRV_TOKEN) || ""; } catch (e) {}
+const srvBase = () => srv.url ? srv.url + "/" : "";
 async function srvFetch(path, opts = {}) {
   const headers = Object.assign({}, opts.headers || {});
   if (srv.token) headers.Authorization = "Bearer " + srv.token;
   if (opts.body) headers["Content-Type"] = "application/json";
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 12000);
-  try { return await fetch(path, Object.assign({}, opts, { headers, cache: "no-store", signal: ctrl.signal })); }
+  try { return await fetch(srvBase() + path, Object.assign({}, opts, { headers, cache: "no-store", signal: ctrl.signal })); }
   finally { clearTimeout(t); }
 }
 /* "yes" = server found, "no" = this is a plain static host, "unknown" = couldn't reach anything */
@@ -762,26 +765,61 @@ async function syncNow() {
   } catch (e) { setSync("offline"); }
   finally { srv.busy = false; if (srv.again) { srv.again = false; setTimeout(syncNow, 300); } }
 }
-function renderSyncPanel(mode) {
+function renderSyncPanel(mode, msg) {
   $("#syncPanel").hidden = false;
-  $("#tokenRow").hidden = !srv.auth && mode !== "auth";
+  const on = srv.on;
+  $("#urlRow").hidden = $("#urlBtns").hidden = !(srv.url || !on);
+  $("#disconnectBtn").hidden = !srv.url;
+  if (document.activeElement !== $("#srvUrl")) $("#srvUrl").value = srv.url;
+  $("#syncBtns").hidden = $("#syncHelp").hidden = !on;
+  $("#tokenRow").hidden = !(on && (srv.auth || mode === "auth"));
+  if (!on) {
+    $("#syncNote").textContent = msg || "No sync server is connected, so your ledger lives only in this browser on this device. To sync devices and keep server backups, enter the https address of your own Grudge Ledger server.";
+    return;
+  }
   const i = srv.info, bits = [];
   if (srv.lastOk) bits.push("Last synced " + new Date(srv.lastOk).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + ".");
   if (i && i.backups) bits.push(i.backups.count ? `The server holds ${i.backups.count} backup${i.backups.count === 1 ? "" : "s"}, the latest from ${new Date(i.savedAt || Date.now()).toLocaleDateString()}.` : "No server backup yet.");
-  $("#syncNote").textContent = (mode === "offline" ? "The server can't be reached right now; changes are kept on this device and sent later. " : mode === "auth" ? "Enter the sync password to connect. " : "") + bits.join(" ");
+  $("#syncNote").textContent = (srv.url ? "Syncing with " + srv.url + ". " : "") + (mode === "offline" ? "The server can't be reached right now; changes are kept on this device and sent later. " : mode === "auth" ? "Enter the sync password to connect. " : "") + bits.join(" ");
 }
-async function initServer() {
-  if (window.claude || !/^https?:$/.test(location.protocol)) return;
-  let known = false; try { known = localStorage.getItem(SRV_FLAG) === "1"; } catch (e) {}
-  const d = await srvDetect();
-  if (d === "no") { try { localStorage.removeItem(SRV_FLAG); } catch (e) {} return; }
-  if (d === "unknown" && !known) return;
+async function startSync() {
   srv.on = true; try { localStorage.setItem(SRV_FLAG, "1"); } catch (e) {}
-  renderSyncPanel(); 
+  renderSyncPanel();
   await syncNow();
+  if (srv.listening) return;
+  srv.listening = true;
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") syncNow(); });
   window.addEventListener("online", syncNow);
   setInterval(() => { if (document.visibilityState === "visible") syncNow(); }, 30000);
+}
+async function initServer() {
+  if (window.claude || !/^https?:$/.test(location.protocol)) return;
+  let known = false; try { known = localStorage.getItem(SRV_FLAG) === "1"; srv.url = localStorage.getItem(SRV_URL) || ""; } catch (e) {}
+  const d = await srvDetect();
+  if (d === "yes" || (d === "unknown" && known)) return startSync();
+  if (d === "no") { try { localStorage.removeItem(SRV_FLAG); } catch (e) {} }
+  renderSyncPanel("static", srv.url ? "Couldn't reach " + srv.url + " just now. Everything is still saved on this device." : undefined);
+}
+async function connectTo(raw) {
+  let url = raw.trim();
+  if (!url) return toast("Enter the server address first.");
+  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+  url = url.replace(/\/+$/, "");
+  if (location.protocol === "https:" && /^http:/i.test(url)) return renderSyncPanel("static", "This page is on https, so the browser only allows an https server address. If your server is reached through Tailscale, use `tailscale serve` to get one.");
+  const prev = srv.url; srv.url = url;
+  const d = await srvDetect();
+  if (d !== "yes") {
+    srv.url = prev;
+    return renderSyncPanel("static", "Couldn't find a Grudge Ledger server at " + url + ". Check the address, that Tailscale or your network is on, and that the server allows this site (CORS_ORIGIN).");
+  }
+  try { localStorage.setItem(SRV_URL, url); } catch (e) {}
+  toast("Connected. Syncing…");
+  await startSync();
+}
+function disconnect() {
+  srv.on = false; srv.url = ""; srv.lastOk = 0; srv.info = null;
+  try { localStorage.removeItem(SRV_URL); localStorage.removeItem(SRV_FLAG); } catch (e) {}
+  setSync("local"); renderSyncPanel("static", "Disconnected. Your ledger stays on this device. The server keeps its copy and backups.");
 }
 
 /* ---------- helpers ---------- */
@@ -1348,6 +1386,9 @@ function wire() {
     const p = navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(txt) : Promise.reject();
     p.then(() => toast("Backup copied. Paste it somewhere safe."), () => { out.hidden = false; out.value = txt; out.focus(); out.select(); toast("Select all and copy the text below."); });
   });
+  $("#connectBtn").addEventListener("click", () => connectTo($("#srvUrl").value));
+  $("#srvUrl").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); connectTo($("#srvUrl").value); } });
+  $("#disconnectBtn").addEventListener("click", disconnect);
   $("#syncNowBtn").addEventListener("click", async () => { await syncNow(); toast(srv.lastOk && Date.now() - srv.lastOk < 5000 ? "Synced." : "Couldn't sync yet."); });
   $("#syncToken").addEventListener("change", e => { srv.token = e.target.value.trim(); try { localStorage.setItem(SRV_TOKEN, srv.token); } catch (err) {} syncNow(); });
   $("#srvBackupBtn").addEventListener("click", async () => {

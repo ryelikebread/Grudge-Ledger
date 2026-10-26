@@ -64,7 +64,7 @@ Settings → Skin. Each skin changes the look *and* the wording of the confirm r
 - **Phone and laptop stay in step.** Changes merge: grudges and dossiers added on different devices are all kept, a closed grudge stays closed, and deleted things stay deleted. Open the app or tap **Sync now** to pull the latest.
 - **Server backups:** the server saves timestamped copies automatically. **Back up on server now** makes one immediately; **Download latest server backup** saves one to your device.
 - **Sync password:** if the server was set up with one, the Server sync panel asks for it once.
-- **If the app is served from a plain static host** there's no sync panel, and data stays only in that browser. Use **Copy backup** / **Restore from backup** to move it.
+- **If the app is served from a plain static host** (including the GitHub Pages copy), data stays only in that browser unless you connect a server: in Settings → **Server sync** enter the `https://` address of your Grudge Ledger server and press **Connect** (the server must allow that site; see the README's `CORS_ORIGIN`). **Disconnect** stops syncing and leaves your data on the device. Without a server, use **Copy backup** / **Restore from backup** to move data between devices.
 - **Restore from backup** and **Burn the ledger** replace everything on every device the next time they sync.
 - **Copy backup** puts the whole ledger on your clipboard as text, in any edition.
 - Sound, vibration and skin are per device.
@@ -79,6 +79,7 @@ Nothing is installed on your phone. The server edition is one small container; t
 |---|---|
 | `public/index.html` | The whole app: layout, four skins, logic. No frameworks or libraries. |
 | `public/merge.js` | Combines two copies of the ledger during sync (by id; closed beats open; deletions kept). |
+| `.github/workflows/pages.yml` | Optional: publishes the static app to GitHub Pages. |
 | `public/sw.js` + `manifest.webmanifest` + `icons/` | Offline cache and "install as app" support. |
 | `public/fonts/` (self-hosted) | Black Ops One and Share Tech Mono (Nuclear Football), Bodoni Moda, Cormorant Garamond and Caveat (Little Black Book), Special Elite and Courier Prime (Case File). Windows 98 uses the system Tahoma/Segoe font. |
 | `server/server.js` (Node.js 22, no packages) | Serves the app, stores the ledger (`/data/ledger.json`), writes timestamped backups (`/data/backups/`), optional `SYNC_TOKEN` password. |
@@ -88,6 +89,6 @@ Nothing is installed on your phone. The server edition is one small container; t
 | `localStorage` (key `grudge-ledger-v1`) | The on-device copy (also the only copy in the static edition). |
 | Dockerfile.static + nginx (optional) | The static edition. |
 
-**Server settings** (environment variables): `PORT` (host port in compose, default 8080), `SYNC_TOKEN`, `BACKUP_MIN_INTERVAL_MIN` (default 10), `BACKUP_KEEP` (default 500).
+**Server settings** (environment variables): `PORT` (host port in compose, default 8080), `SYNC_TOKEN`, `BACKUP_MIN_INTERVAL_MIN` (default 10), `BACKUP_KEEP` (default 500), `CORS_ORIGIN` (sites allowed to sync from elsewhere, e.g. your github.io address).
 
 **Data model** (what the backup text contains): `profiles[]` (id, name, relation, notes, createdAt, updatedAt, history[] of {at, score, label, note}), `grudges[]` (id, profileId, charge, details, severity 1–100, occurredAt, loggedAt, statN, statU h/d/w/m/y/eternal, expiresAt or null, status open/forgiven/settled/lapsed, resolvedAt), `deleted[]` (ids removed, so sync doesn't bring them back), `epoch` (bumped by Restore/Burn), `settings` (skin, sound, haptics), `updatedAt`.

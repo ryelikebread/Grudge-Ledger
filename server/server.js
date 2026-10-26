@@ -8,6 +8,8 @@
      SYNC_TOKEN                 optional shared password; if set the app asks for it
      BACKUP_MIN_INTERVAL_MIN    at most one backup per this many minutes (default 10)
      BACKUP_KEEP                newest backups always kept (default 500); the newest one per day is also kept for 90 days
+     CORS_ORIGIN                optional, comma-separated web origins allowed to call the API from another site,
+                                e.g. https://yourname.github.io  (default: none; same-origin only)
 */
 const http = require("http");
 const fs = require("fs");
@@ -20,6 +22,7 @@ const DATA = path.resolve(process.env.DATA_DIR || "/data");
 const TOKEN = process.env.SYNC_TOKEN || "";
 const BACKUP_MIN = (+process.env.BACKUP_MIN_INTERVAL_MIN || 10) * 60e3;
 const BACKUP_KEEP = +process.env.BACKUP_KEEP || 500;
+const CORS = (process.env.CORS_ORIGIN || "").split(",").map(x => x.trim().replace(/\/+$/, "")).filter(Boolean);
 const MAX_BODY = 5 * 1024 * 1024;
 const LEDGER = path.join(DATA, "ledger.json");
 const BACKUPS = path.join(DATA, "backups");
@@ -94,9 +97,14 @@ function scheduleBackup() {
 }
 
 /* ---------- http helpers ---------- */
+function corsFor(req) {
+  const o = req.headers.origin;
+  if (!o || !CORS.length || !(CORS.includes("*") || CORS.includes(o))) return {};
+  return { "Access-Control-Allow-Origin": CORS.includes("*") ? "*" : o, "Vary": "Origin", "Access-Control-Expose-Headers": "Content-Disposition" };
+}
 function send(res, code, obj, headers = {}) {
   const body = JSON.stringify(obj);
-  res.writeHead(code, Object.assign({ "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }, headers));
+  res.writeHead(code, Object.assign({}, res.cors, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" }, headers));
   res.end(body);
 }
 function readBody(req) {
@@ -120,6 +128,12 @@ function validState(s) {
 /* ---------- API ---------- */
 async function api(req, res, url) {
   const p = url.pathname;
+  res.cors = corsFor(req);
+  if (req.method === "OPTIONS") { // browser preflight for calls from another origin
+    const h = Object.assign({ "Access-Control-Allow-Methods": "GET, PUT, POST, OPTIONS", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Max-Age": "600" }, res.cors);
+    if (res.cors["Access-Control-Allow-Origin"] && req.headers["access-control-request-private-network"]) h["Access-Control-Allow-Private-Network"] = "true";
+    res.writeHead(204, h); return res.end();
+  }
   if (p === "/api/status" && req.method === "GET") {
     const b = listBackups();
     return send(res, 200, { ok: true, sync: true, auth: !!TOKEN, rev: cur.rev, savedAt: cur.savedAt, backups: { count: b.length, latest: b[0] || null } });
@@ -152,7 +166,7 @@ async function api(req, res, url) {
   if (m && req.method === "GET") {
     const name = m[1] === "latest" ? listBackups()[0] : m[1];
     if (!name || !NAME_RE.test(name) || !fs.existsSync(path.join(BACKUPS, name))) return send(res, 404, { error: "no such backup" });
-    res.writeHead(200, { "Content-Type": "application/json", "Content-Disposition": `attachment; filename="${name}"`, "Cache-Control": "no-store" });
+    res.writeHead(200, { ...res.cors, "Content-Type": "application/json", "Content-Disposition": `attachment; filename="${name}"`, "Cache-Control": "no-store" });
     return fs.createReadStream(path.join(BACKUPS, name)).pipe(res);
   }
   return send(res, 404, { error: "not found" });

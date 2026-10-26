@@ -2,6 +2,7 @@
 #   docker compose up -d --build            -> http://your-server:8080
 # Pick another host port:   PORT=8090 docker compose up -d --build   (or put PORT=8090 in a file named .env here)
 # Optional sync password:   SYNC_TOKEN=some-long-password           (also fine in .env)
+# Let the GitHub Pages copy of the app sync with this server: CORS_ORIGIN=https://yourname.github.io (also fine in .env)
 # Data (ledger + timestamped backups) lives in the "grudge-data" Docker volume.
 services:
   grudge-ledger:
@@ -15,6 +16,7 @@ services:
       SYNC_TOKEN: ${SYNC_TOKEN:-}
       BACKUP_MIN_INTERVAL_MIN: ${BACKUP_MIN_INTERVAL_MIN:-10}
       BACKUP_KEEP: ${BACKUP_KEEP:-500}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
     volumes:
       - grudge-data:/data
 volumes:

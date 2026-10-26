@@ -35,6 +35,17 @@ Or serve the contents of `public/` from any web server (nginx, Apache, Caddy, Gi
 PUBLIC_DIR=public DATA_DIR=./data PORT=8080 node server/server.js     # Node 18+
 ```
 
+### GitHub Pages edition (static, free HTTPS)
+A workflow (`.github/workflows/pages.yml`) publishes `public/` to GitHub Pages at **https://<your-username>.github.io/Grudge-Ledger/** on every push to `main` that changes the app.
+
+One-time setup: in the repo go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**, then run the workflow (Actions tab → *Deploy to GitHub Pages* → Run workflow) or push a change.
+
+- It's the **static edition**: no server, so by default each browser keeps its own data (use Settings → Copy backup / Restore from backup to move it). Because Pages is HTTPS, phones can **install it as an app** and it works offline.
+- It all works under the `/Grudge-Ledger/` subpath (every path in the app is relative).
+- **Optional sync:** Settings → Server sync lets this copy talk to *your own* Grudge Ledger server. The address must be `https://` (a Tailscale `tailscale serve` address works), and the server must allow the Pages site: set `CORS_ORIGIN=https://<your-username>.github.io` in the server's `.env` and rebuild. Add `SYNC_TOKEN` as well if the server is reachable by others.
+- **Privacy note:** every site under `<your-username>.github.io` shares one browser origin, so another page hosted there could read this app's saved data. Don't host untrusted pages on the same account, or use a custom domain.
+- Changes can take a few minutes to show up (Pages caches for 10 minutes).
+
 ## Updating
 ```sh
 cd Grudge-Ledger && git pull && docker compose up -d --build
@@ -61,7 +72,7 @@ Your data is in a volume, so it survives rebuilds. If you changed files in `publ
 
 ## Security
 
-The sync API has no accounts. Anyone who can reach the port can read and change the ledger unless you set `SYNC_TOKEN`. On plain HTTP the password is sent unencrypted, so keep it on a trusted network, or put HTTPS/Tailscale in front. Nothing is sent to third parties; fonts are bundled.
+`CORS_ORIGIN` (comma-separated origins, default none) lets a page served from another site, such as the GitHub Pages copy, call the API. The sync API has no accounts. Anyone who can reach the port can read and change the ledger unless you set `SYNC_TOKEN`. On plain HTTP the password is sent unencrypted, so keep it on a trusted network, or put HTTPS/Tailscale in front. Nothing is sent to third parties; fonts are bundled.
 
 ## What's in the repo
 
@@ -72,6 +83,7 @@ The sync API has no accounts. Anyone who can reach the port can read and change 
 | `public/sw.js`, `manifest.webmanifest`, `icons/` | Offline cache and installable-app metadata. Bump `VERSION` in `sw.js` when `public/` changes. |
 | `public/fonts/` | Self-hosted Google Fonts (SIL Open Font License). |
 | `server/server.js` | The sync server: serves `public/`, stores the ledger, writes backups. Node standard library only. |
+| `.github/workflows/pages.yml` | Runs the tests and publishes `public/` to GitHub Pages. |
 | `Dockerfile`, `docker-compose.yml` | Server edition (default). |
 | `docker-compose.https.yml` | Server edition behind Caddy with automatic HTTPS. |
 | `Dockerfile.static`, `nginx.conf`, `docker-compose.static.yml` | Static edition. |

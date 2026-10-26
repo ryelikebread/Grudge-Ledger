@@ -52,3 +52,16 @@ test("sync token is enforced when set", async () => {
     assert.equal((await (await fetch(s.base + "/api/status")).json()).auth, true);
   } finally { await s.stop(); }
 });
+
+test("CORS only for configured origins", async () => {
+  const s = await start({ CORS_ORIGIN: "https://me.github.io/" });
+  try {
+    let r = await fetch(s.base + "/api/ledger", { method: "OPTIONS", headers: { Origin: "https://me.github.io", "Access-Control-Request-Method": "PUT", "Access-Control-Request-Private-Network": "true" } });
+    assert.equal(r.status, 204); assert.equal(r.headers.get("access-control-allow-origin"), "https://me.github.io");
+    assert.match(r.headers.get("access-control-allow-headers"), /Authorization/); assert.equal(r.headers.get("access-control-allow-private-network"), "true");
+    r = await fetch(s.base + "/api/status", { headers: { Origin: "https://me.github.io" } }); assert.equal(r.headers.get("access-control-allow-origin"), "https://me.github.io");
+    r = await fetch(s.base + "/api/status", { headers: { Origin: "https://evil.example" } }); assert.equal(r.headers.get("access-control-allow-origin"), null);
+  } finally { await s.stop(); }
+  const s2 = await start();
+  try { const r = await fetch(s2.base + "/api/status", { headers: { Origin: "https://me.github.io" } }); assert.equal(r.headers.get("access-control-allow-origin"), null); } finally { await s2.stop(); }
+});
